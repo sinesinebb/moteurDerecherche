@@ -1,0 +1,189 @@
+# docker-compose.yml
+
+services:
+  # Search Service
+  search-service:
+    build: .
+    ports:
+      - "8001:8000"
+    environment:
+      - CRAWLER_SERVICE_URL=http://crawler-service:8005
+      - ZOOKEEPER_HOSTS=zookeeper:2181
+      - USER_SERVICE_URL=http://user-service:8004
+      - INDEXING_SERVICE_URL=http://indexing-service:8000
+      - PAGERANK_SERVICE_URL=http://pagerank-service:8002
+      - CHATBOT_SERVICE_URL=http://chatbot-service:8003
+      - ADMIN_SERVICE_URL=http://admin-service:8004
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - REDIS_URL=redis://redis:6379
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - LOG_LEVEL=INFO
+    depends_on:
+      - elasticsearch
+    networks:
+      - search-network
+      - shared_net
+    volumes:
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Elasticsearch
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9210:9200"
+    networks:
+      - search-network
+      - shared_net
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis
+  # redis:
+  #   image: redis:7.2-alpine
+  #   ports:
+  #     - "6379:6379"
+  #   networks:
+  #     - search-network
+  #   volumes:
+  #     - redis_data:/data
+  #   command: redis-server --appendonly yes
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 3s
+  #     retries: 3
+
+  # Kafka
+  # zookeeper:
+  #   image: confluentinc/cp-zookeeper:7.4.0
+  #   environment:
+  #     ZOOKEEPER_CLIENT_PORT: 2181
+  #     ZOOKEEPER_TICK_TIME: 2000
+  #   networks:
+  #     - search-network
+
+  # kafka:
+  #   image: confluentinc/cp-kafka:7.4.0
+  #   depends_on:
+  #     - zookeeper
+  #   environment:
+  #     KAFKA_BROKER_ID: 1
+  #     KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+  #     KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+  #     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+  #   ports:
+  #     - "9092:9092"
+  #   networks:
+  #     - search-network
+  #   healthcheck:
+  #     test: ["CMD", "kafka-topics", "--list", "--bootstrap-server", "localhost:9092"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - search-network
+      - shared_net
+
+  # Grafana
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./deploy/grafana/dashboards:/etc/grafana/dashboards
+    networks:
+      - search-network
+      - shared_net
+    depends_on:
+      - prometheus
+
+  # Redis Exporter
+  # redis-exporter:
+  #   image: oliver006/redis_exporter:latest
+  #   ports:
+  #     - "9121:9121"
+  #   environment:
+  #     - REDIS_ADDR=redis://redis:6379
+  #   networks:
+  #     - search-network
+  #     - shared_net
+  #   depends_on:
+  #     - redis
+
+  # Node Exporter
+  node-exporter:
+    image: prom/node-exporter:latest
+    ports:
+      - "9100:9100"
+    networks:
+      - search-network
+      - shared_net
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+
+  # Kafka Exporter
+  # kafka-exporter:
+  #   image: danielqsj/kafka-exporter:latest
+  #   ports:
+  #     - "9308:9308"
+  #   environment:
+  #     - KAFKA_BROKERS=kafka:9092
+  #   networks:
+  #     - search-network
+  #     - shared_net
+  #   depends_on:
+  #     - kafka
+
+networks:
+  search-network:
+    driver: bridge
+  shared_net:
+    external: true
+    name: shared_clean_scrapy_net
+
+volumes:
+  elasticsearch_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:

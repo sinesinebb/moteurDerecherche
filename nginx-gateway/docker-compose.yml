@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  nginx-gateway:
+    build: ./nginx-gateway
+    ports:
+      - "80:80"
+      - "443:443"  # Pour HTTPS plus tard
+    networks:
+      - search-network
+    depends_on:
+      - frontend
+      - search
+      - user
+      - admin
+    volumes:
+      - ./nginx-gateway/logs:/var/log/nginx
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports: []  # Plus exposé directement
+    networks:
+      - search-network
+
+  search:
+    build: ./search
+    ports: []  # Plus exposé directement
+    networks:
+      - search-network
+
+  user:
+    build: ./user
+    ports: []  # Plus exposé directement
+    networks:
+      - search-network
+
+  admin:
+    build: ./admin
+    ports: []  # Plus exposé directement
+    networks:
+      - search-network
+
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000"
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=password
+
+  # ... autres services (crawler, indexing, pagerank)
+
+networks:
+  search-network:
+    driver: bridge

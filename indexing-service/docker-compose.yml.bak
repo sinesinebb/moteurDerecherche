@@ -1,0 +1,87 @@
+# docker-compose.yml (indexing - cleaned, sans infra)
+services:
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.0
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sS http://127.0.0.1:9200/_cluster/health | grep -E '\"status\":\"(green|yellow)\"' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+    networks:
+      - moteur_network
+      - shared_net
+
+  minio:
+    image: minio/minio:latest
+    command: server /data
+    environment:
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+    ports:
+      - "9000:9000"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "bash", "-lc", "mc --version >/dev/null 2>&1 || (wget -q -O- https://dl.min.io/client/mc/release/linux-amd64/mc | tar -xz -C /tmp && /tmp/mc --version) ; /tmp/mc --help >/dev/null 2>&1 || exit 0"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - moteur_network
+      - shared_net
+
+  indexing-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: moteur_recherche_indexing:latest
+    env_file:
+      - .env
+    environment:
+      # connexions infra (doivent pointer vers le docker-compose infra sur shared_net)
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - ZOOKEEPER_HOSTS=zookeeper:2181
+      - REDIS_URL=redis://redis:6379
+      - ELASTICSEARCH_HOST=http://elasticsearch:9200
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      # port interne (optionnel)
+      - SERVICE_PORT=${SERVICE_PORT:-8000}
+    ports:
+      - "${SERVICE_PORT:-8000}:${SERVICE_PORT:-8000}"
+    volumes:
+      - ./:/app   # utile en dev; enlever en production si tu veux ne pas monter le code
+      - ./utils/wait-for-it.sh:/usr/local/bin/wait-for-it.sh:ro
+    entrypoint: ["/bin/bash", "-c", "\
+      /wait-for-it.sh kafka:9092 --timeout=60 --strict -- echo kafka-ok && \
+      /wait-for-it.sh redis:6379 --timeout=30 --strict -- echo redis-ok && \
+      /wait-for-it.sh elasticsearch:9200 --timeout=60 --strict -- echo es-ok && \
+      exec uvicorn src.main:app --host 0.0.0.0 --port 8000 \
+      "]
+    depends_on:
+      - elasticsearch
+      - minio
+    restart: unless-stopped
+    networks:
+      - moteur_network
+      - shared_net
+
+volumes:
+  esdata:
+  minio_data:
+
+networks:
+  moteur_network:
+    driver: bridge
+  shared_net:
+    external: true
+    name: shared_clean_scrapy_net

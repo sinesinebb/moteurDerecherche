@@ -1,0 +1,15 @@
+Django==4.2.7
+djangorestframework==3.14.0
+django-cors-headers==4.3.1
+psycopg2-binary==2.9.10
+redis==5.0.1
+celery==5.3.4
+pandas>=2.1.0        # ← Version plus récente
+numpy>=1.25.0        # ← Version plus récente  
+matplotlib>=3.7.2    # ← Garder ou mettre à jour
+prometheus-client==0.19.0
+gunicorn==21.2.0
+python-decouple==3.8
+drf-yasg==1.21.7
+django-health-check==3.17.0
+requests==2.31.0

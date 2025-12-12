@@ -1,0 +1,17 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+kafka-python
+elasticsearch==8.10.0
+minio
+redis
+pydantic
+confluent-kafka[async]
+# confluent-kafka
+beautifulsoup4>=4.12.0
+lxml>=4.9.0       
+html5lib>=1.1    
+aiokafka>=0.8.0
+requests   # facultatif, si tu préfères requests pour health checks
+html2text==2020.1.16
+

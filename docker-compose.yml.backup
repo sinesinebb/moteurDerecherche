@@ -1,0 +1,530 @@
+# File: moteur_recherche/docker-compose.yml
+
+services:
+  # ==================== INFRASTRUCTURE ====================
+  zookeeper:
+    image: zookeeper:3.9
+    container_name: zookeeper
+    environment:
+      ZOO_MY_ID: 1
+      ZOO_4LW_COMMANDS_WHITELIST: "*"
+      ZOO_CFG_EXTRA: "skipACL=yes"
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper_data:/data
+      - zookeeper_datalog:/datalog
+    healthcheck:
+      test: ["CMD", "zkServer.sh", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    networks:
+      - moteur_network
+
+  kafka:
+    image: apache/kafka:3.7.0
+    container_name: kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_MESSAGE_MAX_BYTES: 10485760
+      KAFKA_REPLICA_FETCH_MAX_BYTES: 10485760
+      KAFKA_MAX_REQUEST_SIZE: 10485760
+    ports:
+      - "9092:9092"
+    healthcheck:
+      test: ["CMD", "kafka-topics.sh", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 15s
+      timeout: 10s
+      retries: 15
+      start_period: 60s
+    networks:
+      - moteur_network
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.0
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - bootstrap.memory_lock=true
+    ports:
+      - "9200:9200"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=50s || exit 1"]  # ✅ Healthcheck amélioré
+      interval: 20s
+      timeout: 20s
+      retries: 10
+      start_period: 40s
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    mem_limit: 1g  
+    networks:
+      - moteur_network
+  minio:
+    image: minio/minio:latest
+    command: server /data
+    environment:
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+    ports:
+      - "9000:9000"
+      - "9002:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - moteur_network
+
+
+  # ==================== CRAWLER SERVICES ====================
+  scheduler:
+    build:
+      context: ./crawler/clean-scrapy-cluster 
+      dockerfile: docker/scheduler/Dockerfile.py3
+    image: custom-scrapy-cluster-scheduler:latest
+    volumes:
+      - ./crawler/clean-scrapy-cluster/cluster_config:/opt/scrapy-cluster/cluster_config:ro 
+      - ./crawler/clean-scrapy-cluster/utils/wait-for-it.sh:/usr/local/bin/wait-for-it.sh:ro 
+    environment:
+      WAIT_FOR_IT_TIMEOUT: 120
+      REDIS_URL: "redis://redis:6379"
+      ZOOKEEPER_HOSTS: "zookeeper:2181"
+      KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "scheduler.py"]
+      interval: 10s
+      retries: 5
+    restart: always
+    entrypoint: >-
+      bash -c "
+        /usr/local/bin/wait-for-it.sh zookeeper:2181 --timeout=$${WAIT_FOR_IT_TIMEOUT} &&
+        /usr/local/bin/wait-for-it.sh kafka:9092    --timeout=$${WAIT_FOR_IT_TIMEOUT} &&
+        /usr/local/bin/wait-for-it.sh redis:6379    --timeout=$${WAIT_FOR_IT_TIMEOUT} &&
+        exec python scheduler.py -c /opt/scrapy-cluster/cluster_config/scheduler_config.json
+      "
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - moteur_network
+
+  crawler:
+    build:
+      context: ./crawler/clean-scrapy-cluster 
+      dockerfile: docker/crawler/Dockerfile.py3
+    volumes:
+      - ./crawler/clean-scrapy-cluster/crawler:/usr/src/app 
+      - ./crawler/clean-scrapy-cluster/scrapy.cfg:/usr/src/app/scrapy.cfg:ro 
+      - ./crawler/clean-scrapy-cluster/settings.py:/usr/src/app/settings.py:ro 
+      - ./crawler/clean-scrapy-cluster/utils/wait-for-it.sh:/usr/local/bin/wait-for-it.sh:ro 
+      - ./crawler/clean-scrapy-cluster/docker/crawler/start.sh:/usr/local/bin/start.sh:ro 
+    environment:
+      SPIDER: infoscraper
+      WAIT_FOR_IT_TIMEOUT: "120"
+      REDIS_URL: "redis://redis:6379"
+      ZOOKEEPER_HOSTS: "zookeeper:2181"
+      KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+      CLUSTER_NAME: "demo"
+      KAFKA_MAIN_TOPIC: "crawled_documents"
+    restart: always
+    entrypoint: ["/usr/local/bin/start.sh"]
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - moteur_network
+
+  rest:
+    build:
+      context: ./crawler/clean-scrapy-cluster  
+      dockerfile: docker/rest/Dockerfile.py3
+    environment:
+      REST_PORT: 5343
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+      KAFKA_HOSTS: kafka:9092
+      KAFKA_TOPIC: item
+      FLASK_DEBUG: false
+    ports:
+      - "5343:5343"
+    restart: always
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - moteur_network
+
+
+  seeder:
+    build:
+      context: ./crawler/clean-scrapy-cluster
+      dockerfile: docker/seeder/Dockerfile.py3
+    image: custom-scrapy-cluster-seeder:latest
+    environment:
+      WAIT_FOR_IT_TIMEOUT: "125"
+    volumes:
+      - ./crawler/clean-scrapy-cluster/utils/wait-for-it.sh:/usr/local/bin/wait-for-it.sh:ro
+      - ./crawler/clean-scrapy-cluster/seeder:/app
+      - ./crawler/clean-scrapy-cluster/cluster_config:/app/config:ro
+    working_dir: /app
+    entrypoint: >-
+      bash -c "
+        echo 'Waiting for Kafka to be ready...' &&
+        /usr/local/bin/wait-for-it.sh kafka:9092 --timeout=$${WAIT_FOR_IT_TIMEOUT} &&
+        echo 'Starting automatic seeding...' &&
+        python seeder.py -c /app/config/seeder_config.json &&
+        echo 'Seeding completed successfully!' &&
+        echo 'Seeder will now exit. Use REST API to add more URLs if needed.' &&
+        exit 0
+      "
+    restart: "no"  
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - moteur_network
+
+      
+  # ==================== INDEXING SERVICE ====================
+  indexing-service:
+    build:
+      context: ./indexing-service  
+      dockerfile: Dockerfile
+    image: moteur_recherche_indexing:latest
+    environment:
+      # Kafka Configuration
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_TOPIC: crawled_documents
+      KAFKA_GROUP_ID: indexer-group
+      
+      # Elasticsearch Configuration
+      ES_INDEX: tech_docs
+      ES_HOSTS: http://elasticsearch:9200
+      ES_USER: ""
+      ES_PASSWORD: ""
+      
+      # Redis Configuration
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+      
+      # MinIO Configuration
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      
+      # Service Configuration
+      SERVICE_PORT: 8001
+      LOG_LEVEL: INFO
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./indexing-service/utils/wait-for-it.sh:/usr/local/bin/wait-for-it.sh:ro  
+    entrypoint: ["/bin/bash", "-c", "\
+      /usr/local/bin/wait-for-it.sh kafka:9092 --timeout=60 --strict -- echo kafka-ok && \
+      /usr/local/bin/wait-for-it.sh redis:6379 --timeout=30 --strict -- echo redis-ok && \
+      /usr/local/bin/wait-for-it.sh elasticsearch:9200 --timeout=60 --strict -- echo es-ok && \
+      exec uvicorn src.main:app --host 0.0.0.0 --port 8001 \
+      "]
+    depends_on:
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - moteur_network
+
+
+# ==================== SEARCH SERVICE ====================
+
+  search-service:
+    build:
+      context: ./search_service
+      dockerfile: Dockerfile
+    image: moteur_recherche_search:latest
+    environment:
+      # Configuration Elasticsearch
+      ELASTICSEARCH_HOST: "elasticsearch"
+      ELASTICSEARCH_PORT: "9200"
+      ELASTICSEARCH_URL: "http://elasticsearch:9200"
+      
+      # Configuration Redis
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
+      
+      # Configuration Kafka
+      KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+      
+      # Configuration du service
+      SERVICE_PORT: "8000"
+      LOG_LEVEL: "INFO"
+      
+      # Variables spécifiques
+      ELASTICSEARCH_INDEX: "tech_docs"
+      
+    ports:
+      - "8002:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    command: >
+      sh -c "
+        echo 'Waiting for Elasticsearch...' &&
+        while ! nc -z elasticsearch 9200; do
+          sleep 2
+        done &&
+        echo 'Elasticsearch ready, starting application...' &&
+        uvicorn app.main:app --host 0.0.0.0 --port 8000
+      "
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - moteur_network
+
+# ==================== FRONTEND SERVICE ====================
+  frontend:
+    build:
+      context: ./frontend/frontend-nuxt-freshe
+      dockerfile: Dockerfile
+      target: production
+    container_name: moteur-recherche-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      # ✅ CORRECTION : Variables d'environnement simplifiées
+      - NUXT_PUBLIC_API_BASE=http://localhost:8002
+      - API_BASE_URL=http://search-service:8000
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # ✅ Permet d'accéder à l'hôte
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      search-service:
+        condition: service_healthy
+    networks:
+      - moteur_network
+
+
+# ==================== NLP SERVICE ====================
+  nlp-service:
+    build:
+      context: ./nlp-service
+      dockerfile: Dockerfile
+    image: moteur_recherche_nlp:latest
+    environment:
+      - SERVICE_PORT=8003
+      - LOG_LEVEL=INFO
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "8003:8003"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 20s
+      retries: 10
+      start_period: 120s  # Donne plus de temps pour le téléchargement des modèles
+    networks:
+      - moteur_network
+    # Augmenter les timeout pour les modèles lourds
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
+
+
+# ==================== USER SERVICE ====================
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    image: moteur_recherche_user:latest
+    environment:
+      - DATABASE_URL=postgresql://user:password@user-db:5432/userdb
+      - REDIS_URL=redis://redis:6379/1
+      - SECRET_KEY=${JWT_SECRET}
+      - SERVICE_PORT=8004
+    ports:
+      - "8004:8004"
+    volumes:
+      - ./user-service/utils/wait-for-it.sh:/usr/local/bin/wait-for-it.sh:ro
+    entrypoint: ["/bin/bash", "-c", "\
+      /usr/local/bin/wait-for-it.sh user-db:5432 --timeout=60 --strict -- echo 'PostgreSQL ready' && \
+      /usr/local/bin/wait-for-it.sh redis:6379 --timeout=30 --strict -- echo 'Redis ready' && \
+      python manage.py migrate && \
+      python manage.py runserver 0.0.0.0:8004"]
+    depends_on:
+      user-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - moteur_network
+
+  user-db:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=userdb
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5432:5432"
+    volumes:
+      - user_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d userdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - moteur_network
+
+# ==================== ADMIN SERVICE ====================
+  admin-service:
+    build:
+      context: ./search-admin-service
+      dockerfile: Dockerfile
+    image: moteur_recherche_admin:latest
+    environment:
+      - DATABASE_URL=postgresql://admin:admin@admin-db:5432/admindb
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - REDIS_URL=redis://redis:6379/2
+      - SERVICE_PORT=8005
+    ports:
+      - "8005:8005"
+    volumes:
+      - ./search-admin-service/utils/wait-for-it.sh:/usr/local/bin/wait-for-it.sh:ro
+    entrypoint: ["/bin/bash", "-c", "\
+      /usr/local/bin/wait-for-it.sh admin-db:5432 --timeout=60 --strict -- echo 'PostgreSQL ready' && \
+      /usr/local/bin/wait-for-it.sh elasticsearch:9200 --timeout=60 --strict -- echo 'Elasticsearch ready' && \
+      python manage.py migrate && \
+      python manage.py runserver 0.0.0.0:8005"]
+    depends_on:
+      admin-db:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - moteur_network
+
+  admin-db:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=admindb
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin
+    ports:
+      - "5433:5432"
+    volumes:
+      - admin_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d admindb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - moteur_network
+
+# ==================== PAGERANK SERVICE ====================
+  pagerank-service:
+    build:
+      context: ./pagerank
+      dockerfile: Dockerfile
+    image: moteur_recherche_pagerank:latest
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - REDIS_URL=redis://redis:6379/3
+      - SERVICE_PORT=8006
+    ports:
+      - "8006:8006"
+    volumes:
+      - ./pagerank/utils/wait-for-it.sh:/usr/local/bin/wait-for-it.sh:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8006/health"]  
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    entrypoint: ["/bin/bash", "-c", "\
+      /usr/local/bin/wait-for-it.sh elasticsearch:9200 --timeout=60 --strict -- echo 'Elasticsearch ready' && \
+      /usr/local/bin/wait-for-it.sh kafka:9092 --timeout=30 --strict -- echo 'Kafka ready' && \
+      exec uvicorn src.main:app --host 0.0.0.0 --port 8006"]
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - moteur_network
+
+
+volumes:
+  zookeeper_data:
+  kafka_data:
+  redis_data:
+  esdata:
+  minio_data:
+  nlp_models:
+  user_db_data:
+  admin_db_data:
+
+networks:
+  moteur_network:
+    driver: bridge
+

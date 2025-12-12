@@ -1,0 +1,69 @@
+# deploy/prometheus/prometheus.yml
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Règles d'alerte
+rule_files:
+  - "alert_rules.yml"
+
+# Configuration de scraping
+scrape_configs:
+  # Search Service
+  - job_name: 'search-service'
+    static_configs:
+      - targets: ['search-service:8000']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '(.*)'
+        replacement: 'search-service-${1}'
+
+  # Elasticsearch
+  - job_name: 'elasticsearch'
+    static_configs:
+      - targets: ['elasticsearch:9200']
+    metrics_path: '/_prometheus/metrics'
+    scrape_interval: 30s
+    params:
+      format: ['prometheus']
+
+  # Redis
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    scrape_interval: 30s
+
+  # Node Exporter (métriques système)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 30s
+
+  # Kafka
+  - job_name: 'kafka'
+    static_configs:
+      - targets: ['kafka-exporter:9308']
+    scrape_interval: 30s
+
+  # Prometheus lui-même
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 30s
+
+# Configuration de stockage
+storage:
+  tsdb:
+    path: /prometheus
+    retention: 15d
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093

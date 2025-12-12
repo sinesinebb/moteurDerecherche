@@ -1,0 +1,495 @@
+version: '3.8'
+
+services:
+  # ==================== INFRASTRUCTURE DE BASE ====================
+  zookeeper:
+    image: bitnami/zookeeper:3.9
+    container_name: zookeeper
+    environment:
+      ALLOW_ANONYMOUS_LOGIN: "yes"
+      ZOO_4LW_COMMANDS_WHITELIST: "*"
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper_data:/bitnami/zookeeper
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo ruok | nc localhost 2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - moteur_network
+
+  kafka:
+    image: bitnami/kafka:3.7
+    container_name: kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_CFG_MESSAGE_MAX_BYTES: 10485760
+      KAFKA_CFG_REPLICA_FETCH_MAX_BYTES: 10485760
+      KAFKA_CFG_MAX_REQUEST_SIZE: 10485760
+      KAFKA_CFG_NUM_PARTITIONS: 3
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka_data:/bitnami/kafka
+    healthcheck:
+      test: ["CMD", "kafka-topics.sh", "--list", "--bootstrap-server", "localhost:9092"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - moteur_network
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - bootstrap.memory_lock=true
+      - cluster.name=moteur-recherche
+      - node.name=es-node-1
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=50s || exit 1"]
+      interval: 20s
+      timeout: 20s
+      retries: 10
+      start_period: 40s
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    mem_limit: 2g
+    networks:
+      - moteur_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - moteur_network
+
+  minio:
+    image: minio/minio:RELEASE.2024-10-09T06-12-19Z
+    container_name: minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - moteur_network
+
+  # ==================== GATEWAY ET REVERSE PROXY ====================
+  nginx-gateway:
+    image: nginx:alpine
+    container_name: nginx-gateway
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx-gateway/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx-gateway/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      - search-service
+      - user-service
+      - admin-service
+      - frontend
+    networks:
+      - moteur_network
+
+  # ==================== CRAWLER SERVICES ====================
+  scrapy-scheduler:
+    build:
+      context: ./crawler/clean-scrapy-cluster
+      dockerfile: docker/scheduler/Dockerfile.py3
+    image: scrapy-scheduler:latest
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      ZOOKEEPER_HOSTS: zookeeper:2181
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC: crawled_documents
+    depends_on:
+      - redis
+      - zookeeper
+      - kafka
+    networks:
+      - moteur_network
+
+  scrapy-crawler:
+    build:
+      context: ./crawler/clean-scrapy-cluster
+      dockerfile: docker/crawler/Dockerfile.py3
+    image: scrapy-crawler:latest
+    environment:
+      SPIDER: infoscraper
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      ZOOKEEPER_HOSTS: zookeeper:2181
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC: crawled_documents
+      CLUSTER_NAME: moteur-recherche
+    depends_on:
+      - scrapy-scheduler
+      - redis
+      - zookeeper
+      - kafka
+    networks:
+      - moteur_network
+
+  scrapy-rest:
+    build:
+      context: ./crawler/clean-scrapy-cluster
+      dockerfile: docker/rest/Dockerfile.py3
+    image: scrapy-rest:latest
+    ports:
+      - "5343:5343"
+    environment:
+      REST_PORT: 5343
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KAFKA_HOSTS: kafka:9092
+      KAFKA_TOPIC: crawled_documents
+    depends_on:
+      - redis
+      - kafka
+    networks:
+      - moteur_network
+
+  # ==================== MICROSERVICES CORE ====================
+  indexing-service:
+    build:
+      context: ./indexing-service
+      dockerfile: Dockerfile
+    image: moteur-recherche-indexing:latest
+    environment:
+      # Kafka
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_TOPIC: crawled_documents
+      KAFKA_GROUP_ID: indexer-group
+      
+      # Elasticsearch
+      ES_HOSTS: http://elasticsearch:9200
+      ES_INDEX: tech_docs
+      
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      
+      # MinIO
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: documents
+      
+      # NLP
+      NLP_SERVICE_URL: http://nlp-service:8003
+      
+      # Service
+      SERVICE_PORT: 8001
+      LOG_LEVEL: INFO
+    ports:
+      - "8001:8001"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      nlp-service:
+        condition: service_healthy
+    networks:
+      - moteur_network
+
+  search-service:
+    build:
+      context: ./search_service
+      dockerfile: Dockerfile
+    image: moteur-recherche-search:latest
+    environment:
+      # Elasticsearch
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ELASTICSEARCH_INDEX: tech_docs
+      
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      
+      # NLP
+      NLP_SERVICE_URL: http://nlp-service:8003
+      
+      # PageRank
+      PAGERANK_SERVICE_URL: http://pagerank-service:8006
+      
+      # Service
+      SERVICE_PORT: 8002
+      LOG_LEVEL: INFO
+      CACHE_TTL: 300
+    ports:
+      - "8002:8002"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nlp-service:
+        condition: service_healthy
+      pagerank-service:
+        condition: service_healthy
+    networks:
+      - moteur_network
+
+  nlp-service:
+    build:
+      context: ./nlp-service
+      dockerfile: Dockerfile
+    image: moteur-recherche-nlp:latest
+    environment:
+      SERVICE_PORT: 8003
+      LOG_LEVEL: INFO
+      MODEL_CACHE_DIR: /app/models
+      SPACY_MODEL: fr_core_news_md
+      TRANSFORMERS_CACHE: /app/models
+    ports:
+      - "8003:8003"
+    volumes:
+      - nlp_models:/app/models
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+    networks:
+      - moteur_network
+
+  pagerank-service:
+    build:
+      context: ./pagerank
+      dockerfile: Dockerfile
+    image: moteur-recherche-pagerank:latest
+    environment:
+      SERVICE_PORT: 8006
+      LOG_LEVEL: INFO
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC: page_rank_updates
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      UPDATE_INTERVAL: 3600  # Mise à jour toutes les heures
+    ports:
+      - "8006:8006"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - moteur_network
+
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    image: moteur-recherche-user:latest
+    environment:
+      SERVICE_PORT: 8004
+      DATABASE_URL: postgresql://user:password@user-db:5432/userdb
+      REDIS_URL: redis://redis:6379/1
+      SECRET_KEY: ${JWT_SECRET:-dev-secret-key-change-in-production}
+      JWT_EXPIRATION: 3600
+      DJANGO_SETTINGS_MODULE: user_service.settings.base
+    ports:
+      - "8004:8004"
+    depends_on:
+      user-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - moteur_network
+
+  user-db:
+    image: postgres:15-alpine
+    container_name: user-db
+    environment:
+      POSTGRES_DB: userdb
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - user_db_data:/var/lib/postgresql/data
+      - ./user-service/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d userdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - moteur_network
+
+  admin-service:
+    build:
+      context: ./search-admin-service
+      dockerfile: Dockerfile
+    image: moteur-recherche-admin:latest
+    environment:
+      SERVICE_PORT: 8005
+      DATABASE_URL: postgresql://admin:admin@admin-db:5432/admindb
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      REDIS_URL: redis://redis:6379/2
+      DJANGO_SETTINGS_MODULE: search_admin.settings
+    ports:
+      - "8005:8005"
+    depends_on:
+      admin-db:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - moteur_network
+
+  admin-db:
+    image: postgres:15-alpine
+    container_name: admin-db
+    environment:
+      POSTGRES_DB: admindb
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+    volumes:
+      - admin_db_data:/var/lib/postgresql/data
+      - ./search-admin-service/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d admindb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - moteur_network
+
+  # ==================== FRONTEND ====================
+  frontend:
+    build:
+      context: ./frontend/frontend-nuxt-freshe
+      dockerfile: Dockerfile
+      target: production
+    image: moteur-recherche-frontend:latest
+    environment:
+      NODE_ENV: production
+      NUXT_PUBLIC_API_BASE: http://localhost:8002
+      NUXT_PUBLIC_SEARCH_API: http://search-service:8002/api/search
+      NUXT_PUBLIC_USER_API: http://user-service:8004/api
+      NUXT_PUBLIC_ADMIN_API: http://admin-service:8005/api
+      NUXT_PUBLIC_APP_NAME: "Moteur de Recherche Informatique"
+      NUXT_PUBLIC_APP_VERSION: "1.0.0"
+    ports:
+      - "3000:3000"
+    depends_on:
+      search-service:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+    networks:
+      - moteur_network
+
+  # ==================== MONITORING ====================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    depends_on:
+      - elasticsearch
+      - redis
+      - kafka
+    networks:
+      - moteur_network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - moteur_network
+
+volumes:
+  zookeeper_data:
+  kafka_data:
+  redis_data:
+  esdata:
+  minio_data:
+  nlp_models:
+  user_db_data:
+  admin_db_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  moteur_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

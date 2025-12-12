@@ -1,0 +1,66 @@
+services:
+  # Utilisez les images que vous avez déjà téléchargées
+  redis:
+    image: redis:alpine  # ✅ Vous l'avez déjà
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - moteur_network
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.0  # ✅ Vous l'avez déjà
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+    networks:
+      - moteur_network
+
+  minio:
+    image: minio/minio:latest  # ✅ Vous l'avez déjà
+    container_name: minio
+    command: server /data
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    ports:
+      - "9000:9000"
+    networks:
+      - moteur_network
+
+  search-service:
+    build:
+      context: ./search_service
+      dockerfile: Dockerfile
+    container_name: search-service
+    environment:
+      ELASTICSEARCH_URL: "http://elasticsearch:9200"
+      ELASTICSEARCH_INDEX: "tech_docs"
+      SERVICE_PORT: "8000"
+    ports:
+      - "8002:8000"
+    depends_on:
+      - elasticsearch
+    networks:
+      - moteur_network
+
+  frontend:
+    build:
+      context: ./frontend/frontend-nuxt-freshe
+      dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NUXT_PUBLIC_API_BASE=http://localhost:8002
+    depends_on:
+      - search-service
+    networks:
+      - moteur_network
+
+networks:
+  moteur_network:
+    driver: bridge
