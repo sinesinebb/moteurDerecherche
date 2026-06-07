@@ -125,4 +125,5 @@ tmp/
 # MODÈLES NLP (fichiers lourds téléchargés)
 # ========================
 **/models/
-**/embeddings/
+**/embeddings/elasticsearch-8.10.0/
+elasticsearch-8.10.0-windows-x86_64.zip
