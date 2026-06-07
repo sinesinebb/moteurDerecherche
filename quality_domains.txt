@@ -1,8 +1,0 @@
-stackoverflow.com
-github.com
-docs.python.org
-realpython.com
-geeksforgeeks.org
-developer.mozilla.org
-towardsdatascience.com
-medium.com

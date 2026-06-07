@@ -2,8 +2,8 @@ version: '3.8'
 services:
   redis:
     image: redislabs/redisgraph:latest
-    ports:
-      - "6379:6379"
+    networks:
+      - moteur_network
     volumes:
       - redis-data:/data
 
@@ -16,12 +16,17 @@ services:
     depends_on:
       - redis
     ports:
-      - "8000:8000"
+      - "8006:8000" 
     environment:
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      GRAPH_NAME: link_graph
-
+      - REDIS_URL=redis://redis:6379/0
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - ELASTICSEARCH_INDEX=tech_docs
+    networks:
+      - moteur_network
 
 volumes:
   redis-data:
+
+networks:
+  moteur_network:
+    external: true

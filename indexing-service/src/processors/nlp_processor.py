@@ -136,24 +136,22 @@ def _sha256_to_floats(text: str, dims: int) -> List[float]:
 
 
 def embedding_from_text(text: str, dims: int = 128) -> List[float]:
-    """
-    Return an embedding for `text`.
-    - If an embedding model has been set with set_text_embedding_model(), it will be used.
-    - Otherwise falls back to a deterministic SHA256-based vector of length `dims`.
-    """
+    if not text or len(text.strip()) == 0:
+        # Retourner un vecteur avec de petites valeurs aléatoires pour éviter le vecteur nul
+        import random
+        random.seed(42)  # reproductibilité
+        return [random.uniform(-0.1, 0.1) for _ in range(dims)]
+    
     if _embedding_model is not None:
         try:
             vec = _embedding_model(text)
-            # coerce to list[float] and/or truncate/pad
             vec = list(vec)
             if dims and len(vec) != dims:
-                # try to adapt: truncate or pad with zeros
                 if len(vec) > dims:
                     return vec[:dims]
                 else:
                     return vec + [0.0] * (dims - len(vec))
             return vec
         except Exception:
-            # fall back to deterministic
             pass
     return _sha256_to_floats(text or "", dims)

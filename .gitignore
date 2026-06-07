@@ -1,8 +1,8 @@
-# Gros fichiers Elasticsearch
+# ========================
+# GROS FICHIERS & ARCHIVES
+# ========================
 elasticsearch-8.10.0-windows-x86_64.zip
 elasticsearch-8.10.0/
-
-# Fichiers d'installation/configuration
 *.zip
 *.tar.gz
 *.msi
@@ -10,12 +10,16 @@ elasticsearch-8.10.0/
 *.dll
 *.pdb
 
-# Environnement
+# ========================
+# ENVIRONNEMENT & SECRETS
+# ========================
 .env
 .env.*
 !.env.example
 
-# Python
+# ========================
+# PYTHON
+# ========================
 __pycache__/
 *.py[cod]
 *$py.class
@@ -39,22 +43,27 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+.venv/
+venv/
+env/
 
-# Node.js
+# ========================
+# NODE.JS
+# ========================
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .yarn-integrity
 
-# IDE
+# ========================
+# IDE & OS
+# ========================
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-
-# OS
 .DS_Store
 .DS_Store?
 ._*
@@ -63,25 +72,57 @@ yarn-error.log*
 ehthumbs.db
 Thumbs.db
 
-# Docker
+# ========================
+# DOCKER
+# ========================
 docker-compose.override.yml
 docker-compose-*.yml.backup
 
-# Logs
-*.log
-logs/
-
-# Redis
-dump.rdb
-
-# Elasticsearch
+# ========================
+# VOLUMES DOCKER (données persistantes)
+# ========================
+# Génériques
 data/
 logs/
 
-# Backup files
+# Spécifiques au projet (d'après docker-compose.yml)
+zookeeper_data/
+kafka_data/
+redis_data/
+esdata/
+minio_data/
+nlp_models/
+user_db_data/
+admin_db_data/
+prometheus_data/
+grafana_data/
+nlp_vocab/
+
+# ========================
+# BASES DE DONNÉES & CACHE
+# ========================
+dump.rdb
+*.db
+*.sqlite3
+
+# ========================
+# LOGS
+# ========================
+*.log
+logs/
+
+# ========================
+# BACKUP & TEMPORAIRES
+# ========================
 *.bak
 *.backup
-
-# Fichiers temporaires
+*.tmp
+*.temp
 temp/
 tmp/
+
+# ========================
+# MODÈLES NLP (fichiers lourds téléchargés)
+# ========================
+**/models/
+**/embeddings/

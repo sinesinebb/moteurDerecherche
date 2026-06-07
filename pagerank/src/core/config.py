@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     
     # Configuration Redis - avec host et port séparés
     redis_url: str = Field(..., env="REDIS_URL")
+
+    graph_name: str = Field("link_graph", env="GRAPH_NAME")
     
     # Propriétés calculées pour redis_host et redis_port
     @property

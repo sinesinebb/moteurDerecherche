@@ -1,18 +1,17 @@
-FROM python:3.9-slim
+FROM pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime
 
 WORKDIR /app
 
-# Installation des dépendances système minimales
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+# Installation des dépendances Python
+COPY requirements.txt .
+RUN pip install --no-cache-dir --default-timeout=1000 -r requirements.txt
 
-# Copie des requirements
-COPY requirements_simple.txt requirements.txt
+# Pré-téléchargement du modèle SentenceTransformer large ET de son tokenizer
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('dangvantuan/sentence-camembert-large')" \
+    && python -c "from transformers import AutoTokenizer; AutoTokenizer.from_pretrained('dangvantuan/sentence-camembert-large')"
 
-# Installation des dépendances Python minimales
-RUN pip install --no-cache-dir fastapi==0.104.1 uvicorn==0.24.0 pydantic==2.5.0
+# Copie du code applicatif
+COPY ./app /app/app
 
-# Copie du code
-COPY app/ ./app/
-
-# Utiliser la version simple
-CMD ["python", "app/main_simple.py"]
+# Point d'entrée
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8003", "--timeout-keep-alive", "300", "--timeout-graceful-shutdown", "30"]

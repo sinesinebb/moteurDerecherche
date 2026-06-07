@@ -1,53 +1,55 @@
-version: '3.8'
-
 services:
-  # ==================== INFRASTRUCTURE DE BASE ====================
+   # ==================== INFRASTRUCTURE DE BASE ====================
   zookeeper:
-    image: bitnami/zookeeper:3.9
+    image: zookeeper:3.9.1
     container_name: zookeeper
+    restart: always
     environment:
       ALLOW_ANONYMOUS_LOGIN: "yes"
       ZOO_4LW_COMMANDS_WHITELIST: "*"
     ports:
       - "2181:2181"
     volumes:
-      - zookeeper_data:/bitnami/zookeeper
+      - ./crawler/seed_urls.txt:/app/seed_urls.txt:ro
+      - zookeeper_data:/data
     healthcheck:
-      test: ["CMD", "bash", "-c", "echo ruok | nc localhost 2181"]
+      test: ["CMD-SHELL", "echo ruok | nc -w 2 127.0.0.1 2181 | grep imok"]
       interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 5
+      start_period: 30s
     networks:
       - moteur_network
 
   kafka:
-    image: bitnami/kafka:3.7
+    image: wurstmeister/kafka:2.13-2.8.1
     container_name: kafka
     depends_on:
       zookeeper:
         condition: service_healthy
     environment:
+      KAFKA_GROUP_ID: indexer-group-v2
       KAFKA_BROKER_ID: 1
-      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
-      ALLOW_PLAINTEXT_LISTENER: "yes"
-      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092
-      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
-      KAFKA_CFG_MESSAGE_MAX_BYTES: 10485760
-      KAFKA_CFG_REPLICA_FETCH_MAX_BYTES: 10485760
-      KAFKA_CFG_MAX_REQUEST_SIZE: 10485760
-      KAFKA_CFG_NUM_PARTITIONS: 3
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_MESSAGE_MAX_BYTES: 10485760
+      KAFKA_REPLICA_FETCH_MAX_BYTES: 10485760
+      KAFKA_MAX_REQUEST_SIZE: 10485760
+      KAFKA_NUM_PARTITIONS: 3
     ports:
       - "9092:9092"
     volumes:
-      - kafka_data:/bitnami/kafka
+      - ./crawler/seed_urls.txt:/app/seed_urls.txt:ro
+      - kafka_data:/kafka
     healthcheck:
       test: ["CMD", "kafka-topics.sh", "--list", "--bootstrap-server", "localhost:9092"]
-      interval: 15s
+      interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 30s
+      start_period: 60s
     networks:
       - moteur_network
 
@@ -65,6 +67,7 @@ services:
       - "9200:9200"
       - "9300:9300"
     volumes:
+      - ./crawler/seed_urls.txt:/app/seed_urls.txt:ro
       - esdata:/usr/share/elasticsearch/data
     healthcheck:
       test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=50s || exit 1"]
@@ -87,6 +90,7 @@ services:
     ports:
       - "6379:6379"
     volumes:
+      - ./crawler/seed_urls.txt:/app/seed_urls.txt:ro
       - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -97,7 +101,7 @@ services:
       - moteur_network
 
   minio:
-    image: minio/minio:RELEASE.2024-10-09T06-12-19Z
+    image: minio/minio:RELEASE.2023-10-25T06-33-25Z
     container_name: minio
     command: server /data --console-address ":9001"
     environment:
@@ -105,8 +109,9 @@ services:
       MINIO_ROOT_PASSWORD: minioadmin
     ports:
       - "9000:9000"
-      - "9001:9001"
+      - "9002:9001"
     volumes:
+      - ./crawler/seed_urls.txt:/app/seed_urls.txt:ro
       - minio_data:/data
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
@@ -116,7 +121,8 @@ services:
     networks:
       - moteur_network
 
-  # ==================== GATEWAY ET REVERSE PROXY ====================
+
+   # ==================== GATEWAY ET REVERSE PROXY ====================
   nginx-gateway:
     image: nginx:alpine
     container_name: nginx-gateway
@@ -124,40 +130,118 @@ services:
       - "80:80"
       - "443:443"
     volumes:
+      - ./crawler/seed_urls.txt:/app/seed_urls.txt:ro
       - ./nginx-gateway/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx-gateway/conf.d:/etc/nginx/conf.d:ro
     depends_on:
       - search-service
       - user-service
       - admin-service
-      - frontend
+      - frontend-new
     networks:
       - moteur_network
 
-  # ==================== CRAWLER SERVICES ====================
+   # ==================== CRAWLER SERVICES ====================
+  scrapy-seeder:
+    build:
+      context: ./crawler/clean-scrapy-cluster
+      dockerfile: docker/seeder/Dockerfile.py3
+    image: scrapy-seeder:latest
+    container_name: scrapy-seeder
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SEED_TOPIC: sc.seed.crawl
+      SEED_URLS: "https://fr.wikipedia.org/wiki/Programmation_informatique,https://fr.wikipedia.org/wiki/Python_(langage),https://fr.wikipedia.org/wiki/JavaScript,https://fr.wikipedia.org/wiki/Base_de_données,https://fr.wikipedia.org/wiki/Algorithmique"
+      SEED_INTERVAL: 300
+      LOG_LEVEL: INFO
+      SEED_BATCH_SIZE: 5
+      SEED_CRAWLID: "moteur-recherche-init"
+      SEED_APPID: "moteur-recherche"
+      SEED_SPIDERID: "infoscraper"
+      SEED_MAXDEPTH: 2
+      SEED_PRIORITY: 1
+    volumes:
+      - ./crawler/seed_urls.txt:/app/seed_urls.txt:ro
+      - ./crawler/clean-scrapy-cluster/cluster_config/seeder_config.json:/app/seeder_config.json:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - moteur_network
+
   scrapy-scheduler:
     build:
       context: ./crawler/clean-scrapy-cluster
       dockerfile: docker/scheduler/Dockerfile.py3
     image: scrapy-scheduler:latest
+    container_name: scrapy-scheduler
     environment:
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      ZOOKEEPER_HOSTS: zookeeper:2181
+      # Kafka
+      KAFKA_BROKER: kafka:9092
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_TOPIC: crawled_documents
+      SEED_TOPIC: "sc.seed.crawl"
+      CRAWL_TOPIC: "sc.crawl.request"
+      STATUS_TOPIC: crawled_documents
+      ERROR_TOPIC: sc.crawl.error
+  
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_URL: redis://redis:6379/0
+      SPIDER_STARTREDIS_KEY: sc:start_urls
+      
+      # Zookeeper
+      ZOOKEEPER_HOSTS: zookeeper:2181
+
+      # Configuration du scheduler
+      CONFIG_FILE: "/app/scheduler_config.json"
+      SCHEDULER_ID: scheduler-1
+      APP_ID: moteur-recherche
+      CRAWL_ID: moteur-recherche-init
+      SPIDER_ID: infoscraper
+      
+      # Logging
+      LOG_LEVEL: INFO
+      KAFKA_ENABLED: "true"
+      AUTO_OFFSET_RESET: earliest
+      GROUP_ID: scheduler-group
+      
+      # Network
+      PUBLIC_IP: 127.0.0.1
+      SCHEDULER_IP_ENABLED: "false"
+      
+      # Crawl limits
+      MAX_DOMAIN_REQUESTS: 100
+      MAX_PAGES_PER_DOMAIN: 50
+      MIN_WAIT_TIME: 2
+      MAX_WAIT_TIME: 5
+      RETRY_TIMES: 2
+    volumes:
+      - ./crawler/seed_urls.txt:/app/seed_urls.txt:ro
+      - ./crawler/clean-scrapy-cluster/cluster_config/scheduler_config.json:/app/scheduler_config.json:ro
+    command: ["python", "scheduler.py", "--config", "/app/scheduler_config.json"]
     depends_on:
-      - redis
-      - zookeeper
-      - kafka
+      redis:
+        condition: service_healthy
+      zookeeper:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
     networks:
       - moteur_network
+    restart: "no"
+
 
   scrapy-crawler:
     build:
       context: ./crawler/clean-scrapy-cluster
       dockerfile: docker/crawler/Dockerfile.py3
-    image: scrapy-crawler:latest
+    image: scrapy-crawler-minimal:latest
+    container_name: scrapy-crawler
     environment:
       SPIDER: infoscraper
       REDIS_HOST: redis
@@ -166,13 +250,27 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_TOPIC: crawled_documents
       CLUSTER_NAME: moteur-recherche
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: pdf-documents
+      MINIO_SECURE: False
+    volumes:
+      - ./crawler/seed_urls.txt:/app/seed_urls.txt:ro
+      - ./crawler/clean-scrapy-cluster/crawler:/usr/src/app/crawler:rw
+      - ./crawler/clean-scrapy-cluster/crawling:/usr/src/app/crawling:ro
+      - ./crawler/clean-scrapy-cluster/cluster_config/crawler_config.json:/usr/src/app/app/cluster_config/crawler_config.json:ro
+      - ./crawler/clean-scrapy-cluster/docker/crawler/entrypoint.sh:/usr/src/app/docker/crawler/entrypoint.sh:ro   # ← script corrigé
     depends_on:
-      - scrapy-scheduler
-      - redis
-      - zookeeper
-      - kafka
+      redis:
+        condition: service_healthy
+      zookeeper:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
     networks:
       - moteur_network
+    restart: unless-stopped
 
   scrapy-rest:
     build:
@@ -192,14 +290,19 @@ services:
       - kafka
     networks:
       - moteur_network
-
-  # ==================== MICROSERVICES CORE ====================
+   # ==================== MICROSERVICES CORE ====================
   indexing-service:
     build:
       context: ./indexing-service
       dockerfile: Dockerfile
     image: moteur-recherche-indexing:latest
+    volumes:
+      - ./indexing-service:/app   # on monte le code local
     environment:
+
+      USE_NLP_SERVICE: True
+
+      INDEX_BATCH_SIZE: 1
       # Kafka
       KAFKA_BROKERS: kafka:9092
       KAFKA_TOPIC: crawled_documents
@@ -220,7 +323,10 @@ services:
       MINIO_BUCKET: documents
       
       # NLP
+    
       NLP_SERVICE_URL: http://nlp-service:8003
+
+      EMBEDDING_DIMS: 1024
       
       # Service
       SERVICE_PORT: 8001
@@ -247,6 +353,7 @@ services:
       dockerfile: Dockerfile
     image: moteur-recherche-search:latest
     environment:
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY}
       # Elasticsearch
       ELASTICSEARCH_URL: http://elasticsearch:9200
       ELASTICSEARCH_INDEX: tech_docs
@@ -260,11 +367,20 @@ services:
       
       # PageRank
       PAGERANK_SERVICE_URL: http://pagerank-service:8006
+
+      # Minio
+      MINIO_PUBLIC_URL: http://localhost:9000
       
       # Service
       SERVICE_PORT: 8002
       LOG_LEVEL: INFO
       CACHE_TTL: 300
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     ports:
       - "8002:8002"
     depends_on:
@@ -274,34 +390,27 @@ services:
         condition: service_healthy
       nlp-service:
         condition: service_healthy
-      pagerank-service:
-        condition: service_healthy
     networks:
       - moteur_network
 
   nlp-service:
-    build:
-      context: ./nlp-service
-      dockerfile: Dockerfile
+    build: ./nlp-service
     image: moteur-recherche-nlp:latest
-    environment:
-      SERVICE_PORT: 8003
-      LOG_LEVEL: INFO
-      MODEL_CACHE_DIR: /app/models
-      SPACY_MODEL: fr_core_news_md
-      TRANSFORMERS_CACHE: /app/models
     ports:
       - "8003:8003"
     volumes:
-      - nlp_models:/app/models
-    deploy:
-      resources:
-        limits:
-          memory: 4G
-        reservations:
-          memory: 2G
+      - nlp_vocab:/app/data
+    environment:
+      - EMBEDDING_MODEL=dangvantuan/sentence-camembert-large
+      - PORT=8003
     networks:
       - moteur_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 
   pagerank-service:
     build:
@@ -314,9 +423,8 @@ services:
       ELASTICSEARCH_URL: http://elasticsearch:9200
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_TOPIC: page_rank_updates
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      UPDATE_INTERVAL: 3600  # Mise à jour toutes les heures
+      REDIS_URL: redis://redis:6379/0
+      UPDATE_INTERVAL: 3600
     ports:
       - "8006:8006"
     depends_on:
@@ -329,28 +437,7 @@ services:
     networks:
       - moteur_network
 
-  user-service:
-    build:
-      context: ./user-service
-      dockerfile: Dockerfile
-    image: moteur-recherche-user:latest
-    environment:
-      SERVICE_PORT: 8004
-      DATABASE_URL: postgresql://user:password@user-db:5432/userdb
-      REDIS_URL: redis://redis:6379/1
-      SECRET_KEY: ${JWT_SECRET:-dev-secret-key-change-in-production}
-      JWT_EXPIRATION: 3600
-      DJANGO_SETTINGS_MODULE: user_service.settings.base
-    ports:
-      - "8004:8004"
-    depends_on:
-      user-db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - moteur_network
-
+   # ==================== USER SERVICES ====================
   user-db:
     image: postgres:15-alpine
     container_name: user-db
@@ -358,28 +445,109 @@ services:
       POSTGRES_DB: userdb
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
+      POSTGRES_HOST_AUTH_METHOD: trust
     volumes:
       - user_db_data:/var/lib/postgresql/data
-      - ./user-service/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      # Pas de fichier d'initialisation pour éviter les erreurs
     healthcheck:
+      # CORRECTION: Utiliser la base de données "userdb" au lieu de "user"
       test: ["CMD-SHELL", "pg_isready -U user -d userdb"]
       interval: 10s
-      timeout: 5s
-      retries: 5
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+    networks:
+      - moteur_network
+
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    image: moteur-recherche-user:latest
+    container_name: user-service
+
+    environment:
+      EMAIL_HOST: ${EMAIL_HOST}
+      EMAIL_PORT: ${EMAIL_PORT}
+      EMAIL_USE_TLS: ${EMAIL_USE_TLS}
+      EMAIL_HOST_USER: ${EMAIL_HOST_USER}
+      EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD}
+      DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL}
+      GOOGLE_CLIENT_ID: "822174207312-j09fp360u0pnkoc3859kf7aq39i2lodm.apps.googleusercontent.com"
+      # Django
+      DJANGO_SETTINGS_MODULE: user_service.settings.development
+      DEBUG: "True"
+      SECRET_KEY: "dev-secret-key-change-in-production"
+      ALLOWED_HOSTS: "localhost,127.0.0.1,user-service"
+
+      # Horaire
+      
+      
+      # Database
+      DATABASE_NAME: userdb
+      DATABASE_USER: user
+      DATABASE_PASSWORD: password
+      DATABASE_HOST: user-db
+      DATABASE_PORT: 5432
+      
+      # Redis (utilise le redis central)
+      REDIS_URL: "redis://redis:6379/1"
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
+      REDIS_DB: 2
+      
+      # CORS
+      CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://localhost,http://frontend-new:3000"
+      
+      # JWT
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      
+      # Service
+      SERVICE_PORT: 8004
+      LOG_LEVEL: INFO
+      
+      # Network
+      DATABASE_OPTIONS: '{"sslmode": "disable"}'
+    ports:
+      - "8004:8004"
+    volumes:
+        - ./user-service:/app
+        - ./user-service/entrypoint.sh:/entrypoint.sh
+    depends_on:
+      user-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["/entrypoint.sh"]
     networks:
       - moteur_network
 
   admin-service:
     build:
-      context: ./search-admin-service
+      context: ./admin-service
       dockerfile: Dockerfile
     image: moteur-recherche-admin:latest
     environment:
-      SERVICE_PORT: 8005
-      DATABASE_URL: postgresql://admin:admin@admin-db:5432/admindb
-      ELASTICSEARCH_URL: http://elasticsearch:9200
-      REDIS_URL: redis://redis:6379/2
-      DJANGO_SETTINGS_MODULE: search_admin.settings
+      - SERVICE_PORT=8005
+      - ALLOWED_HOSTS=localhost,127.0.0.1,admin-service,nginx-gateway
+      - DATABASE_URL=postgresql://admin:admin@admin-db:5432/admindb
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - REDIS_URL=redis://redis:6379/2
+      - DJANGO_SETTINGS_MODULE=config.settings.production
+      - SECRET_KEY=${ADMIN_SECRET_KEY}
+      - USER_SERVICE_URL=http://user-service:8004
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=2
+    volumes:
+      - ./admin-service:/app
+      - /var/run/docker.sock:/var/run/docker.sock # Ajout --------
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+            python manage.py collectstatic --noinput &&
+            daphne -b 0.0.0.0 -p 8005 config.asgi:application"
     ports:
       - "8005:8005"
     depends_on:
@@ -399,49 +567,84 @@ services:
       POSTGRES_DB: admindb
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
+      POSTGRES_HOST_AUTH_METHOD: trust
     volumes:
       - admin_db_data:/var/lib/postgresql/data
-      - ./search-admin-service/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
+      # CORRECTION: Utiliser la base de données "admindb"
       test: ["CMD-SHELL", "pg_isready -U admin -d admindb"]
       interval: 10s
-      timeout: 5s
-      retries: 5
+      timeout: 10s
+      retries: 10
+      start_period: 20s
     networks:
       - moteur_network
 
-  # ==================== FRONTEND ====================
-  frontend:
+    
+  mailhog:
+    image: mailhog/mailhog
+    container_name: mailhog
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Interface web
+    networks:
+      - moteur_network
+
+
+   # ==================== FRONTEND ====================
+  frontend-new:
     build:
-      context: ./frontend/frontend-nuxt-freshe
+      context: ./moteur-recherche-frontend 
       dockerfile: Dockerfile
-      target: production
+      args:
+        NODE_ENV: production
     image: moteur-recherche-frontend:latest
+    container_name: frontend-nuxt
     environment:
+      # Environnement Nuxt
       NODE_ENV: production
-      NUXT_PUBLIC_API_BASE: http://localhost:8002
-      NUXT_PUBLIC_SEARCH_API: http://search-service:8002/api/search
-      NUXT_PUBLIC_USER_API: http://user-service:8004/api
-      NUXT_PUBLIC_ADMIN_API: http://admin-service:8005/api
+      # NUXT_PUBLIC_API_BASE: http://localhost
+      # NUXT_PUBLIC_API_BASE: http://localhost/api
+      NUXT_PUBLIC_API_BASE: 
       NUXT_PUBLIC_APP_NAME: "Moteur de Recherche Informatique"
       NUXT_PUBLIC_APP_VERSION: "1.0.0"
+      NUXT_PUBLIC_WS_BASE: ws://localhost/ws
+      
+      # Configuration serveur
+      HOST: 0.0.0.0
+      PORT: 3000
+      NITRO_PORT: 3000
+      NITRO_HOST: 0.0.0.0
+      
+      # Network
+      API_URL: http://nginx-gateway/api
+      
+      # Monitoring
+      LOG_LEVEL: info
     ports:
       - "3000:3000"
-    depends_on:
-      search-service:
-        condition: service_healthy
-      user-service:
-        condition: service_healthy
+    volumes: []
+      # Pour le développement, on peut monter le code source :
+      # - ./moteur-recherche-frontend:/app
+      # - /app/node_modules  # Empêche l'écrasement des node_modules
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
     networks:
       - moteur_network
 
-  # ==================== MONITORING ====================
+
+# ==================== MONITORING ====================
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
     ports:
       - "9090:9090"
     volumes:
+      - ./crawler/seed_urls.txt:/app/seed_urls.txt:ro
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     command:
@@ -459,7 +662,7 @@ services:
       - moteur_network
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:10.4.0
     container_name: grafana
     ports:
       - "3001:3000"
@@ -467,11 +670,29 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: admin
       GF_INSTALL_PLUGINS: grafana-piechart-panel
     volumes:
+      - ./crawler/seed_urls.txt:/app/seed_urls.txt:ro
       - grafana_data:/var/lib/grafana
       - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
       - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
     depends_on:
       - prometheus
+    networks:
+      - moteur_network
+
+  video-fetcher:
+    build:
+      context: ./video-fetcher
+      dockerfile: Dockerfile
+    container_name: video-fetcher
+    environment:
+      - YOUTUBE_API_KEY=${YOUTUBE_API_KEY}
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - YOUTUBE_REQUEST_TOPIC=youtube.metadata.requests
+      - YOUTUBE_UPDATED_TOPIC=youtube.metadata.updated
+      - GROUP_ID=video-fetcher
+      - BATCH_SIZE=20
+    depends_on:
+      - kafka
     networks:
       - moteur_network
 
@@ -486,6 +707,7 @@ volumes:
   admin_db_data:
   prometheus_data:
   grafana_data:
+  nlp_vocab:
 
 networks:
   moteur_network:
@@ -493,3 +715,5 @@ networks:
     ipam:
       config:
         - subnet: 172.20.0.0/16
+
+

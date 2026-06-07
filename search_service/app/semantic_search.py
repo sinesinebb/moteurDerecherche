@@ -14,7 +14,7 @@ class SemanticSearch:
         self.documents = []
         
     def build_index(self, documents: List[Dict[str, Any]]):
-        """Construit l'index sémantique FAISS"""
+        """Construit l'index sémantique """
         if not documents:
             return
             
@@ -27,7 +27,7 @@ class SemanticSearch:
         self.index.add(embeddings.astype('float32'))
         self.documents = documents
         
-        logger.info(f"✅ Index sémantique construit avec {len(documents)} documents")
+        logger.info(f" Index sémantique construit avec {len(documents)} documents")
     
     def semantic_search(self, query: str, k: int = 10) -> List[Dict[str, Any]]:
         """Recherche sémantique"""

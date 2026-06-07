@@ -1,20 +1,10 @@
 FROM nginx:alpine
 
-# Installation des outils
-RUN apk add --no-cache bash
-
-# Copie des configurations
+# Copier la configuration nginx
 COPY nginx.conf /etc/nginx/nginx.conf
-COPY conf.d/ /etc/nginx/conf.d/
 
-# Création des dossiers
-RUN mkdir -p /var/log/nginx /var/cache/nginx
+# Exposer le port 80
+EXPOSE 80
 
-# Ports exposés
-EXPOSE 80 443
-
-# Santé check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost/health || exit 1
-
+# Démarrer nginx
 CMD ["nginx", "-g", "daemon off;"]

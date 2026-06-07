@@ -1,183 +1,122 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+# nlp-service/app/main.py
+from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
-from typing import List, Dict, Any, Optional
+from sentence_transformers import SentenceTransformer
+import torch
 import logging
-import threading
-import time
+import numpy as np
+from typing import List, Set
+import pickle
+import os
 
-# Configuration du logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+app = FastAPI(title="NLP Service")
 
-app = FastAPI(
-    title="NLP Service",
-    description="Service de traitement du langage naturel pour le moteur de recherche",
-    version="1.0.0"
-)
+# Modèle plus spécialisé (large) pour de meilleures similarités
+MODEL_NAME = "dangvantuan/sentence-camembert-large"
+VOCAB_FILE = "/app/data/tech_vocab.pkl"
 
-# Configuration CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+logging.info(f"Chargement du modèle {MODEL_NAME}...")
+model = SentenceTransformer(MODEL_NAME, device="cpu")
+logging.info("Modèle chargé")
 
-# Variables globales
-nlp_processor = None
-models_loading = False
-models_loaded = False
-load_error = None
-startup_time = time.time()
+# -------------------------------------------------------------------
+# Vocabulaire technique initial
+# -------------------------------------------------------------------
+BASE_VOCAB = [
+    "python", "java", "javascript", "typescript", "c++", "c#", "go", "rust",
+    "swift", "kotlin", "php", "ruby", "scala",
+    "react", "vue", "angular", "django", "flask", "spring", "express",
+    "node.js", "tensorflow", "pytorch",
+    "docker", "kubernetes", "linux", "windows", "macos", "android", "ios",
+    "git", "github", "gitlab", "jenkins", "ansible", "terraform",
+    "sql", "mysql", "postgresql", "mongodb", "redis", "elasticsearch",
+    "cassandra", "neo4j",
+    "api", "rest", "graphql", "websocket", "microservices", "serverless",
+    "machine learning", "deep learning", "data science", "artificial intelligence",
+    "cloud", "aws", "azure", "gcp", "devops", "ci/cd",
+    "sécurité", "cryptographie", "réseau", "protocole", "http", "tcp/ip",
+    "algorithme", "structure de données", "programmation", "développement",
+    "debug", "test", "déploiement", "performance", "optimisation",
+    "frontend", "backend", "fullstack", "mobile", "web", "desktop"
+]
 
-class QueryRequest(BaseModel):
-    query: str
-    expand: bool = True
-    detect_intent: bool = True
+def load_vocab() -> Set[str]:
+    if os.path.exists(VOCAB_FILE):
+        with open(VOCAB_FILE, "rb") as f:
+            return pickle.load(f)
+    return set(BASE_VOCAB)
 
-class QueryResponse(BaseModel):
-    original_query: str
-    enhanced_query: Dict[str, Any]
-    entities: Dict[str, List[str]]
-    intent: str
-    expanded_terms: List[str]
-    semantic_embedding: List[float]
+def save_vocab(vocab_set: Set[str]):
+    os.makedirs(os.path.dirname(VOCAB_FILE), exist_ok=True)
+    with open(VOCAB_FILE, "wb") as f:
+        pickle.dump(vocab_set, f)
 
-class HealthResponse(BaseModel):
-    status: str
-    service: str
-    models_loaded: bool
-    models_loading: bool
-    version: str
-    load_error: Optional[str] = None
-    startup_time: float
-    current_time: float
+# Chargement du vocabulaire existant
+current_vocab = load_vocab()
+vocab_list = list(current_vocab)
+vocab_embeddings = model.encode(vocab_list, normalize_embeddings=True, convert_to_numpy=True)
 
-def load_models_safe():
-    """Charge les modèles NLP de manière sécurisée"""
-    global nlp_processor, models_loading, models_loaded, load_error
-    
-    models_loading = True
-    load_error = None
-    
+class EmbedRequest(BaseModel):
+    text: str
+    is_query: bool = False
+
+class VocabUpdateRequest(BaseModel):
+    terms: List[str]
+
+from transformers import AutoTokenizer
+
+# Charger le tokenizer correspondant au modèle
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+
+@app.post("/embed")
+async def get_embedding(request: EmbedRequest):
     try:
-        logger.info("Tentative de chargement des modèles NLP...")
-        
-        # Essayer d'abord le processeur simple
-        try:
-            from app.nlp_processor_simple import SimpleNLPProcessor
-            nlp_processor = SimpleNLPProcessor()
-            models_loaded = True
-            models_loading = False
-            logger.info("SimpleNLPProcessor chargé avec succès")
-            return
-        except Exception as e:
-            logger.warning(f"SimpleNLPProcessor échoué: {e}")
-        
-        # Ensuite essayer le processeur complet
-        try:
-            from app.nlp_processor import NLPProcessor
-            nlp_processor = NLPProcessor()
-            models_loaded = True
-            models_loading = False
-            logger.info("NLPProcessor complet chargé avec succès")
-            return
-        except Exception as e:
-            logger.error(f"NLPProcessor complet échoué: {e}")
-            raise
-        
+        text = request.text
+        # Tokeniser et tronquer à 500 tokens pour laisser de la marge
+        tokens = tokenizer.encode(text, add_special_tokens=True)
+        if len(tokens) > 500:
+            # Retronquer en gardant les 500 premiers tokens
+            tokens = tokens[:500]
+            text = tokenizer.decode(tokens, skip_special_tokens=True)
+        embedding = model.encode(text, normalize_embeddings=True).tolist()
+        return {"embedding": embedding, "dim": len(embedding)}
     except Exception as e:
-        models_loading = False
-        models_loaded = False
-        load_error = str(e)
-        logger.error(f"Echec du chargement des modèles: {e}")
+        logging.error(f"Erreur encodage texte (len={len(request.text)}): {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-def load_models_async():
-    """Charge les modèles en arrière-plan"""
-    thread = threading.Thread(target=load_models_safe)
-    thread.daemon = True
-    thread.start()
 
-@app.on_event("startup")
-async def startup_event():
-    """Initialisation au démarrage"""
-    logger.info("Démarrage du NLP Service...")
-    logger.info("Les modèles NLP se chargeront en arrière-plan...")
-    load_models_async()
 
-@app.post("/enhance-query", response_model=QueryResponse)
-async def enhance_query(request: QueryRequest):
-    """Améliore une requête de recherche avec NLP"""
-    global nlp_processor, models_loading, models_loaded
-    
-    if models_loading:
-        raise HTTPException(
-            status_code=503, 
-            detail="Les modèles NLP sont en cours de chargement. Veuillez réessayer dans quelques minutes."
-        )
-    
-    if not models_loaded or nlp_processor is None:
-        raise HTTPException(
-            status_code=503,
-            detail="Les modèles NLP ne sont pas encore disponibles. Le service est en cours d'initialisation."
-        )
-    
+@app.get("/similar")
+async def get_similar_words(
+    word: str = Query(..., min_length=2),
+    top_k: int = 5,
+    threshold: float = 0.5
+):
     try:
-        logger.info(f"Traitement de la requête: '{request.query}'")
-        result = nlp_processor.expand_query(request.query)
-        
-        logger.info(f"Requête améliorée: {len(result['expanded_terms'])} termes, intent: {result['intent']}")
-        return QueryResponse(**result)
-        
+        word_embedding = model.encode(word, normalize_embeddings=True, convert_to_numpy=True)
+        similarities = np.dot(vocab_embeddings, word_embedding)
+        sorted_idx = np.argsort(similarities)[::-1]
+        results = []
+        for idx in sorted_idx[:top_k]:
+            sim = float(similarities[idx])
+            if sim >= threshold and vocab_list[idx] != word:
+                results.append(vocab_list[idx])
+        return {"similar": results, "word": word}
     except Exception as e:
-        logger.error(f"Erreur traitement: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Erreur de traitement: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/health", response_model=HealthResponse)
-async def health_check():
-    """Endpoint de santé"""
-    global nlp_processor, models_loaded, models_loading, load_error, startup_time
-    
-    status = "healthy" if models_loaded else "unhealthy"
-    if models_loading:
-        status = "initializing"
-    
-    return HealthResponse(
-        status=status,
-        service="nlp",
-        models_loaded=models_loaded,
-        models_loading=models_loading,
-        version="1.0.0",
-        load_error=load_error,
-        startup_time=startup_time,
-        current_time=time.time()
-    )
+@app.post("/vocab/update")
+async def update_vocab(request: VocabUpdateRequest):
+    global vocab_embeddings, current_vocab, vocab_list
+    new_terms = set(request.terms) - current_vocab
+    if new_terms:
+        current_vocab.update(new_terms)
+        save_vocab(current_vocab)
+        vocab_list = list(current_vocab)
+        vocab_embeddings = model.encode(vocab_list, normalize_embeddings=True, convert_to_numpy=True)
+        return {"added": len(new_terms), "total": len(current_vocab)}
+    return {"added": 0, "total": len(current_vocab)}
 
-@app.get("/")
-async def root():
-    """Page d'accueil"""
-    global models_loaded, models_loading
-    
-    status = "operational" if models_loaded else "initializing"
-    if models_loading:
-        status = "loading_models"
-    
-    return {
-        "message": "NLP Service du Moteur de Recherche Informatique",
-        "version": "1.0.0",
-        "status": status,
-        "models_ready": models_loaded,
-        "endpoints": {
-            "health": "/health",
-            "enhance_query": "/enhance-query (POST)"
-        }
-    }
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8003)
+@app.get("/health")
+async def health():
+    return {"status": "ok", "model": MODEL_NAME, "vocab_size": len(current_vocab)}

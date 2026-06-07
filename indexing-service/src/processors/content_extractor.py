@@ -1,6 +1,11 @@
-from typing import Dict
+# content_extractor.py (version corrigée et simplifiée)
+from typing import List, Dict, Any, Optional
 from bs4 import BeautifulSoup
-from src.models.document_models import RawResponseItem, Section, Document
+from src.models.document_models import (
+    RawResponseItem, Section, Document, 
+    TechnicalMetadata, ContentQualityMetrics,
+    DifficultyLevel, DocumentType
+)
 import uuid
 from urllib.parse import urlparse
 import re
@@ -8,6 +13,7 @@ from datetime import datetime
 import html2text
 
 
+# ========== FONCTIONS UTILITAIRES ==========
 def _first_meta_content(soup, name: str):
     tag = soup.find("meta", {"name": name})
     if tag and tag.get("content"):
@@ -17,165 +23,83 @@ def _first_meta_content(soup, name: str):
 
 def extract_media_urls(soup, base_url: str) -> tuple[list, list]:
     """Extrait les URLs des images et vidéos de la page"""
-    
-    # Extraction des images
-    image_selectors = [
-        'img::attr(src)',
-        'img::attr(data-src)',
-        'img::attr(data-original)',
-        'meta[property="og:image"]::attr(content)',
-        'meta[name="twitter:image"]::attr(content)'
-    ]
-    
     image_urls = []
-    for selector in image_selectors:
-        elements = soup.select(selector)
-        for el in elements:
-            if el and el.strip():
-                try:
-                    full_url = urljoin(base_url, el.strip())
-                    image_urls.append(full_url)
-                except:
-                    continue
-    
-    # Extraction des vidéos
-    video_selectors = [
-        'video::attr(src)',
-        'video source::attr(src)',
-        'iframe[src*="youtube"]::attr(src)',
-        'iframe[src*="vimeo"]::attr(src)',
-        'meta[property="og:video"]::attr(content)',
-        'meta[name="twitter:player"]::attr(content)',
-        'a[href*=".mp4"]::attr(href)',
-        'a[href*=".webm"]::attr(href)',
-        'a[href*=".ogg"]::attr(href)'
-    ]
-    
     video_urls = []
-    for selector in video_selectors:
-        elements = soup.select(selector)
-        for el in elements:
-            if el and el.strip():
+    
+    # Images
+    for img in soup.find_all('img'):
+        src = img.get('src') or img.get('data-src') or img.get('data-original')
+        if src:
+            try:
+                full_url = urljoin(base_url, src.strip())
+                image_urls.append(full_url)
+            except:
+                continue
+    
+    # Vidéos
+    for video in soup.find_all('video'):
+        src = video.get('src')
+        if src:
+            try:
+                full_url = urljoin(base_url, src.strip())
+                video_urls.append(full_url)
+            except:
+                continue
+        # Sources dans video
+        for source in video.find_all('source'):
+            src = source.get('src')
+            if src:
                 try:
-                    full_url = urljoin(base_url, el.strip())
+                    full_url = urljoin(base_url, src.strip())
                     video_urls.append(full_url)
                 except:
                     continue
     
-    # Supprimer les doublons
-    image_urls = list(set(image_urls))
-    video_urls = list(set(video_urls))
-    
-    return image_urls, video_urls
+    return list(set(image_urls)), list(set(video_urls))
 
 
 def extract_meaningful_content(soup) -> str:
-    """
-    Extrait le contenu textuel significatif en excluant les éléments non pertinents
-    """
+    """Extrait le contenu textuel significatif"""
     # Supprimer les éléments non pertinents
-    for element in soup.find_all(['nav', 'footer', 'header', 'aside', 'script', 'style', 'meta', 'link']):
+    for element in soup.find_all(['nav', 'footer', 'header', 'aside', 'script', 'style']):
         element.decompose()
     
-    # Identifier le contenu principal
+    # Chercher le contenu principal
+    main_selectors = ['main', 'article', '.content', '.main-content', '#content']
     main_content = None
-    selectors = [
-        'main', 'article', '.content', '.main-content', 
-        '.post-content', '#content', '.article-content',
-        '.entry-content', '.blog-post', '.docs-content'
-    ]
     
-    for selector in selectors:
+    for selector in main_selectors:
         main_content = soup.select_one(selector)
         if main_content:
             break
     
-    # Si pas de contenu principal trouvé, utiliser le body
     if not main_content:
-        main_content = soup.find('body')
+        main_content = soup.find('body') or soup
     
-    # Utiliser html2text pour un formatage propre
+    # Convertir en texte
     h = html2text.HTML2Text()
     h.ignore_links = False
     h.ignore_images = True
     h.body_width = 0
-    h.ignore_emphasis = False
     
     content_text = h.handle(str(main_content)) if main_content else ""
     
-    # Nettoyer le texte
-    content_text = re.sub(r'\n\s*\n', '\n\n', content_text)  # Supprimer les lignes vides multiples
-    content_text = re.sub(r' {2,}', ' ', content_text)       # Supprimer les espaces multiples
-    content_text = re.sub(r'\[\!\[.*?\]\(.*?\)\]\(.*?\)', '', content_text)  # Supprimer les images markdown
+    # Nettoyer
+    content_text = re.sub(r'\n\s*\n', '\n\n', content_text)
+    content_text = re.sub(r' {2,}', ' ', content_text)
     
     return content_text.strip()
 
 
-def generate_quality_snippet(content: str, title: str, max_length: int = 200) -> str:
-    """
-    Génère un snippet de qualité à partir du contenu
-    """
-    if not content:
-        return title[:max_length] + "..." if title else ""
-    
-    # Prendre le premier paragraphe significatif
-    paragraphs = [p.strip() for p in content.split('\n\n') if p.strip()]
-    
-    for paragraph in paragraphs:
-        if len(paragraph) > 50 and len(paragraph) < 500:  # Paragraphes de taille raisonnable
-            if len(paragraph) <= max_length:
-                return paragraph
-            else:
-                return paragraph[:max_length].rsplit(' ', 1)[0] + "..."
-    
-    # Fallback: prendre le début du contenu
-    if len(content) <= max_length:
-        return content
-    else:
-        return content[:max_length].rsplit(' ', 1)[0] + "..."
-
-
-def classify_content_type(url: str, content: str, image_urls: list, video_urls: list) -> str:
-    """
-    Classifie le type de contenu de manière plus intelligente
-    """
-    url_lower = url.lower()
-    content_lower = content.lower()
-    
-    # Priorité aux types spécifiques
-    if video_urls:
-        return "video"
-    elif len(image_urls) > 3:
-        return "image_gallery"
-    elif any(x in url_lower for x in ['/docs/', '/documentation/', '/api/', '/reference/']):
-        return "documentation"
-    elif any(x in url_lower for x in ['stackoverflow.com', 'question', 'answer']):
-        return "qna"
-    elif any(x in url_lower for x in ['/blog/', '/article/', '/news/', '/post/']):
-        return "article"
-    elif any(x in url_lower for x in ['tutorial', 'guide', 'how-to', 'course']):
-        return "tutorial"
-    elif 'github.com' in url_lower:
-        return "code_repository"
-    elif any(x in content_lower for x in ['function', 'class', 'def ', 'import ', 'console.log']):
-        return "code_example"
-    else:
-        return "general"
-
-
 def detect_language(text: str) -> str:
-    """
-    Détecte la langue du contenu
-    """
+    """Détecte la langue du contenu"""
     if not text:
         return "en"
     
     text_lower = text.lower()
     
-    # Mots courants français
-    french_words = ['le', 'la', 'les', 'un', 'une', 'des', 'est', 'sont', 'dans', 'pour', 'avec', 'sur', 'par']
-    # Mots courants anglais
-    english_words = ['the', 'a', 'an', 'is', 'are', 'and', 'or', 'but', 'in', 'for', 'with', 'on', 'by']
+    french_words = ['le', 'la', 'les', 'un', 'une', 'des', 'est', 'sont']
+    english_words = ['the', 'a', 'an', 'is', 'are', 'and', 'or', 'but']
     
     french_count = sum(1 for word in french_words if f' {word} ' in f' {text_lower} ')
     english_count = sum(1 for word in english_words if f' {word} ' in f' {text_lower} ')
@@ -184,9 +108,7 @@ def detect_language(text: str) -> str:
 
 
 def extract_domain_authority(url: str) -> int:
-    """
-    Attribue un score d'autorité basé sur le domaine
-    """
+    """Score d'autorité du domaine"""
     domain = urlparse(url).netloc.lower()
     
     authority_scores = {
@@ -195,17 +117,62 @@ def extract_domain_authority(url: str) -> int:
         'docs.python.org': 90,
         'developer.mozilla.org': 90,
         'reactjs.org': 85,
-        'vuejs.org': 85,
-        'nodejs.org': 85,
+        'docker.com': 85,
+        'kubernetes.io': 85,
         'realpython.com': 80,
         'dev.to': 75,
-        'digitalocean.com': 70,
         'freecodecamp.org': 70,
-        'web.dev': 70,
-        'css-tricks.com': 65
     }
     
-    return authority_scores.get(domain, 50)  # Score par défaut 50
+    for domain_key, score in authority_scores.items():
+        if domain_key in domain:
+            return score
+    
+    return 50
+
+
+def calculate_content_quality(content: str, soup: BeautifulSoup) -> ContentQualityMetrics:
+    """Calcule les métriques de qualité"""
+    if not content:
+        return ContentQualityMetrics()
+    
+    words = content.split()
+    word_count = len(words)
+    
+    # Score de lisibilité
+    sentences = re.split(r'[.!?]+', content)
+    avg_sentence_len = word_count / max(len(sentences), 1)
+    
+    if avg_sentence_len < 20:
+        readability = 0.8
+    elif avg_sentence_len < 30:
+        readability = 0.6
+    else:
+        readability = 0.4
+    
+    # Score de structure
+    headings = soup.find_all(['h1', 'h2', 'h3'])
+    paragraphs = soup.find_all('p')
+    
+    structure = 0.5
+    if len(headings) >= 2:
+        structure += 0.2
+    if len(paragraphs) >= 3:
+        structure += 0.3
+    
+    # Score de complétude
+    completeness = min(1.0, word_count / 500)
+    
+    # Score global
+    overall = (readability * 0.2) + (structure * 0.3) + (completeness * 0.5)
+    
+    return ContentQualityMetrics(
+        readability_score=readability,
+        structure_score=structure,
+        completeness_score=completeness,
+        accuracy_score=0.7,  # Valeur par défaut
+        overall_quality=overall
+    )
 
 
 def urljoin(base: str, url: str) -> str:
@@ -213,129 +180,294 @@ def urljoin(base: str, url: str) -> str:
     if url.startswith(('http://', 'https://')):
         return url
     elif url.startswith('/'):
-        # URL absolue
         parsed_base = urlparse(base)
         return f"{parsed_base.scheme}://{parsed_base.netloc}{url}"
     else:
-        # URL relative
         return base.rstrip('/') + '/' + url.lstrip('/')
 
 
+# ========== ANALYSEUR TECHNIQUE ==========
+class TechnicalContentAnalyzer:
+    """Analyse le contenu technique"""
+    
+    def analyze(self, html: str, url: str, text: str) -> TechnicalMetadata:
+        """Analyse le contenu et retourne les métadonnées techniques"""
+        soup = BeautifulSoup(html, 'lxml')
+        
+        # Langages détectés
+        languages = self._detect_languages(text)
+        
+        # Concepts techniques
+        concepts = self._detect_concepts(text)
+        
+        # Niveau de difficulté
+        difficulty = self._estimate_difficulty(text, soup)
+        
+        # Type de document
+        doc_type = self._classify_document(url, text, soup)
+        
+        # Score d'autorité
+        authority = self._calculate_authority(url, text)
+        
+        # Présence de code
+        has_code = self._has_code(soup)
+        
+        # Densité technique
+        density = self._calculate_density(text)
+        
+        # Score technique
+        tech_score = self._calculate_tech_score(languages, concepts, difficulty, authority)
+        
+        return TechnicalMetadata(
+            programming_languages=languages,
+            technical_concepts=concepts,
+            difficulty_level=difficulty,
+            has_code_examples=has_code,
+            code_types=self._detect_code_types(soup),
+            technical_density=density,
+            document_type=doc_type,
+            technical_authority=authority,
+            reading_time_minutes=max(1, len(text.split()) // 200),
+            has_shell_commands=self._has_shell_commands(text),
+            has_diagrams=self._has_diagrams(soup),
+            technical_score=tech_score
+        )
+    
+    def _detect_languages(self, text: str) -> List[str]:
+        """Détecte les langages de programmation"""
+        lang_keywords = {
+            'Python': ['python', 'py', 'django', 'flask'],
+            'JavaScript': ['javascript', 'js', 'node', 'react', 'vue'],
+            'Java': ['java', 'spring'],
+            'SQL': ['sql', 'mysql', 'postgresql'],
+            'HTML/CSS': ['html', 'css'],
+            'C++': ['c++', 'cpp'],
+            'C#': ['c#', 'csharp'],
+            'PHP': ['php'],
+            'Ruby': ['ruby'],
+            'Go': ['go', 'golang'],
+        }
+        
+        detected = []
+        text_lower = text.lower()
+        
+        for lang, keywords in lang_keywords.items():
+            for keyword in keywords:
+                if re.search(r'\b' + re.escape(keyword) + r'\b', text_lower):
+                    detected.append(lang)
+                    break
+        
+        return detected
+    
+    def _detect_concepts(self, text: str) -> List[str]:
+        """Détecte les concepts techniques"""
+        concepts = {
+            'algorithm': ['algorithm', 'complexity', 'sorting'],
+            'api': ['api', 'rest', 'endpoint'],
+            'database': ['database', 'sql', 'query'],
+            'security': ['security', 'encryption', 'authentication'],
+            'devops': ['docker', 'kubernetes', 'deployment'],
+            'web': ['http', 'json', 'xml'],
+            'testing': ['test', 'unit', 'integration'],
+            'cloud': ['aws', 'azure', 'cloud'],
+        }
+        
+        detected = []
+        text_lower = text.lower()
+        
+        for concept, keywords in concepts.items():
+            for keyword in keywords:
+                if keyword in text_lower:
+                    detected.append(concept)
+                    break
+        
+        return detected
+    
+    def _estimate_difficulty(self, text: str, soup: BeautifulSoup) -> DifficultyLevel:
+        """Estime le niveau de difficulté"""
+        text_lower = text.lower()
+        
+        if 'beginner' in text_lower or 'introduction' in text_lower:
+            return DifficultyLevel.BEGINNER
+        elif 'advanced' in text_lower or 'expert' in text_lower:
+            return DifficultyLevel.ADVANCED
+        else:
+            return DifficultyLevel.INTERMEDIATE
+    
+    def _classify_document(self, url: str, text: str, soup: BeautifulSoup) -> DocumentType:
+        """Classifie le type de document"""
+        url_lower = url.lower()
+        text_lower = text.lower()
+        
+        if '/docs/' in url_lower or 'documentation' in url_lower:
+            return DocumentType.DOCUMENTATION
+        elif 'stackoverflow.com' in url_lower:
+            return DocumentType.QNA
+        elif 'github.com' in url_lower:
+            return DocumentType.CODE_REPOSITORY
+        elif 'tutorial' in text_lower or 'guide' in text_lower:
+            return DocumentType.TUTORIAL
+        elif self._has_code(soup):
+            return DocumentType.CODE_EXAMPLE
+        else:
+            return DocumentType.GENERAL
+    
+    def _calculate_authority(self, url: str, text: str) -> int:
+        """Calcule le score d'autorité"""
+        score = 50
+        
+        # Basé sur le domaine
+        domain = urlparse(url).netloc.lower()
+        high_auth_domains = ['docs.python.org', 'developer.mozilla.org', 'kubernetes.io']
+        
+        if any(domain in high_auth for high_auth in high_auth_domains):
+            score += 30
+        
+        # Basé sur le contenu
+        if len(self._detect_languages(text)) >= 2:
+            score += 10
+        
+        if len(self._detect_concepts(text)) >= 3:
+            score += 10
+        
+        return min(100, score)
+    
+    def _has_code(self, soup: BeautifulSoup) -> bool:
+        """Vérifie la présence de code"""
+        return bool(soup.find_all(['pre', 'code']))
+    
+    def _detect_code_types(self, soup: BeautifulSoup) -> List[str]:
+        """Détecte les types de code"""
+        code_elements = soup.find_all(['pre', 'code'])
+        code_text = ' '.join([el.get_text() for el in code_elements])
+        
+        types = []
+        if 'def ' in code_text or 'import ' in code_text:
+            types.append('python')
+        if 'function' in code_text or 'const ' in code_text:
+            types.append('javascript')
+        if 'SELECT ' in code_text.upper():
+            types.append('sql')
+        
+        return types
+    
+    def _calculate_density(self, text: str) -> float:
+        """Calcule la densité technique"""
+        if not text:
+            return 0.0
+        
+        words = text.lower().split()
+        if not words:
+            return 0.0
+        
+        # Mots techniques à rechercher
+        tech_words = {
+            'python', 'javascript', 'java', 'sql', 'html', 'css',
+            'algorithm', 'function', 'class', 'object', 'api',
+            'database', 'server', 'client', 'network', 'protocol'
+        }
+        
+        tech_count = sum(1 for word in words if word in tech_words)
+        return tech_count / len(words)
+    
+    def _has_shell_commands(self, text: str) -> bool:
+        """Vérifie la présence de commandes shell"""
+        return bool(re.search(r'\$\s+[a-z]', text.lower()))
+    
+    def _has_diagrams(self, soup: BeautifulSoup) -> bool:
+        """Vérifie la présence de diagrammes"""
+        for img in soup.find_all('img'):
+            alt = img.get('alt', '').lower()
+            if 'diagram' in alt or 'schema' in alt:
+                return True
+        return False
+    
+    def _calculate_tech_score(self, languages: List[str], concepts: List[str], 
+                            difficulty: DifficultyLevel, authority: int) -> float:
+        """Calcule le score technique global"""
+        score = 0.0
+        
+        if languages:
+            score += 0.3
+        
+        if concepts:
+            score += min(0.3, len(concepts) * 0.1)
+        
+        if difficulty == DifficultyLevel.ADVANCED:
+            score += 0.2
+        elif difficulty == DifficultyLevel.INTERMEDIATE:
+            score += 0.1
+        
+        score += (authority / 100.0) * 0.2
+        
+        return min(1.0, max(0.1, score))
+
+
+# ========== FONCTION PRINCIPALE ==========
 def extract_content(raw_item: Dict) -> Document:
     """
-    Convertit un RawResponseItem (dict) en Document (Pydantic) avec améliorations.
+    Convertit un RawResponseItem en Document avec métadonnées techniques
     """
-    # Valide / transforme en model pour sécurité des champs
+    # Valider les données d'entrée
     r = RawResponseItem(**raw_item)
-
     body = r.body or ""
     soup = BeautifulSoup(body, "lxml")
-
-    # fallback title/description
+    
+    # Titre et description
     title = r.title or (soup.title.string.strip() if soup.title and soup.title.string else "")
     description = r.description or _first_meta_content(soup, "description")
-
-    # Extraire les URLs des médias
-    image_urls, video_urls = extract_media_urls(soup, str(r.url))
     
-    # Extraire le contenu textuel significatif
+    # Extraire le contenu
     extracted_content = extract_meaningful_content(soup)
     
-    # Générer un snippet de qualité
-    quality_snippet = generate_quality_snippet(extracted_content, title)
+    # URLs des médias
+    image_urls, video_urls = extract_media_urls(soup, str(r.url))
     
-    # Classifier le type de contenu
-    content_type = classify_content_type(str(r.url), extracted_content, image_urls, video_urls)
+    # Analyse technique
+    technical_analyzer = TechnicalContentAnalyzer()
+    technical_metadata = technical_analyzer.analyze(body, str(r.url), extracted_content)
     
-    # Extraire le domaine et l'autorité
-    domain = urlparse(str(r.url)).netloc
-    domain_authority = extract_domain_authority(str(r.url))
+    # Métriques de qualité
+    content_quality = calculate_content_quality(extracted_content, soup)
     
-    # Détecter la langue
-    language = detect_language(extracted_content)
+    # Calculer le score global de qualité
+    overall_quality = (
+        (technical_metadata.technical_score * 0.4) +
+        (content_quality.overall_quality * 0.3) +
+        (technical_metadata.technical_authority / 100.0 * 0.3)
+    )
     
-    # Calculer la qualité du contenu
-    content_quality = min(100, len(extracted_content) // 10)  # Basé sur la longueur
-
-    sections = []
-    pos = 0
-
-    # Parcourir DOM pour recueillir éléments pertinents dans l'ordre d'apparition
-    for el in soup.find_all(["h1", "h2", "h3", "h4", "p", "pre", "code", "img", "video"]):
-        if el.name in ["img", "video"]:
-            # Traitement des éléments médias
-            media_url = None
-            if el.name == "img":
-                media_url = el.get('src') or el.get('data-src') or el.get('data-original')
-            else:  # video
-                media_url = el.get('src')
-                if not media_url:
-                    source = el.find('source')
-                    if source:
-                        media_url = source.get('src')
-            
-            if media_url:
-                try:
-                    full_media_url = urljoin(str(r.url), media_url)
-                    sections.append(Section(
-                        id=str(uuid.uuid4()),
-                        type=el.name,  # "img" ou "video"
-                        text=f"Media: {full_media_url}",
-                        start_offset=pos,
-                        end_offset=pos + len(full_media_url),
-                        media_url=full_media_url,
-                        media_type=el.name
-                    ))
-                    pos = pos + len(full_media_url) + 1
-                except:
-                    continue
-                    
-        else:
-            # Traitement normal du texte
-            text = el.get_text(separator="\n").strip()
-            if not text:
-                continue
-
-            if el.name in ("pre", "code"):
-                typ = "code"
-            elif el.name.startswith("h"):
-                typ = "title"
-            else:
-                typ = "text"
-
-            start = pos
-            end = pos + len(text)
-            sections.append(Section(
-                id=str(uuid.uuid4()),
-                type=typ,
-                text=text,
-                start_offset=start,
-                end_offset=end
-            ))
-            pos = end + 1
-
+    # Créer le document
     doc = Document(
         doc_id=str(uuid.uuid4()),
         url=str(r.url),
         crawl_meta={"appid": r.appid, "crawlid": r.crawlid},
         title=title,
         description=description,
-        sections=sections,
+        sections=[],  # Sections optionnelles pour l'instant
         raw=r,
         
-        # CHAMPS AMÉLIORÉS
+        # Métadonnées de base
         image_urls=image_urls,
         video_urls=video_urls,
         media_count=len(image_urls) + len(video_urls),
-        content_type=content_type,
+        content_type="text",
         extracted_content=extracted_content,
-        domain=domain,
-        domain_authority=domain_authority,
-        content_quality=content_quality,
-        language=language,
-        snippet=quality_snippet,
+        domain=urlparse(str(r.url)).netloc,
         crawled_at=r.crawled_at or datetime.now().isoformat(),
-        word_count=len(extracted_content.split())
+        snippet=extracted_content[:200] + "..." if len(extracted_content) > 200 else extracted_content,
+        
+        # Métadonnées techniques
+        technical_metadata=technical_metadata,
+        content_quality=content_quality,
+        domain_authority=extract_domain_authority(str(r.url)),
+        overall_quality_score=overall_quality,
+        detected_language=detect_language(extracted_content),
+        word_count=len(extracted_content.split()),
+        paragraph_count=len(extracted_content.split('\n\n')),
+        code_block_count=len(soup.find_all(['pre', 'code'])),
+        technical_keywords=technical_metadata.programming_languages + technical_metadata.technical_concepts,
+        tags=technical_metadata.technical_concepts[:3] + [technical_metadata.document_type.value]
     )
     
     return doc

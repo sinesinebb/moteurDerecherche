@@ -44,12 +44,59 @@ TECH_DOCUMENT_MAPPING = {
     "mappings": {
         "dynamic": "strict",
         "properties": {
+            "links": {"type": "keyword"},
             "url": {"type": "keyword"},
             "title": {
                 "type": "text",
                 "analyzer": "french_analyzer",
                 "fields": {"keyword": {"type": "keyword"}}
             },
+
+            "file_type": {"type": "keyword"},
+            "file_size": {"type": "integer"},
+            "pages": {"type": "integer"},
+            "word_count": {"type": "integer"},
+
+            "page_url": {"type": "keyword"},
+            "alt": {"type": "text"},
+            "img_title": {"type": "text"},
+            "page_title": {"type": "text"},
+            "page_description": {"type": "text"},
+            
+            "snippet": {"type": "text", "index": False}, 
+
+            "technical_metadata": {
+                "type": "object",
+                "properties": {
+                    "programming_languages": {"type": "keyword"},
+                    "technical_concepts": {"type": "keyword"},
+                    "difficulty_level": {"type": "keyword"},
+                    "has_code_examples": {"type": "boolean"},
+                    "has_shell_commands": {"type": "boolean"}
+                }
+            },
+            "youtube_metadata": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "text", "analyzer": "french_analyzer"},
+                    "description": {"type": "text", "analyzer": "french_analyzer"},
+                    "tags": {"type": "keyword"},
+                    "view_count": {"type": "integer"},
+                    "like_count": {"type": "integer"},
+                    "comment_count": {"type": "integer"},
+                    "duration_seconds": {"type": "integer"},
+                    "thumbnail": {"type": "keyword", "index": False},
+                    "default_thumbnail": {"type": "keyword", "index": False},
+                    "published_at": {"type": "date"},
+                    "channel_title": {"type": "keyword"},
+                    "source": {"type": "keyword"}
+                }
+            },
+
+            "file_type": {"type": "keyword"},
+            "file_size": {"type": "integer"},
+            "pages": {"type": "integer"},
+            "word_count": {"type": "integer"},
             "description": {
                 "type": "text",
                 "analyzer": "french_analyzer"
@@ -58,7 +105,7 @@ TECH_DOCUMENT_MAPPING = {
                 "type": "text",
                 "analyzer": "french_analyzer"
             },
-            # NOUVEAUX CHAMPS MEDIAS
+            # CHAMPS MEDIAS
             "image_urls": {"type": "keyword"},
             "video_urls": {"type": "keyword"},
             "media_count": {"type": "integer"},
@@ -66,7 +113,6 @@ TECH_DOCUMENT_MAPPING = {
             "domain": {"type": "keyword"},
             "crawled_at": {"type": "date"},
             
-            # Champs existants (gardés pour compatibilité)
             "content": {
                 "type": "text",
                 "analyzer": "code_analyzer"

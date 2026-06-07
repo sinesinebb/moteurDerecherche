@@ -14,6 +14,12 @@ faiss-cpu==1.7.4
 # Utilities de base
 numpy==1.24.3
 
+aiohttp==3.8.6
+
+sentence-transformers>=2.2.2
+
 # NLP (versions stables)
 spacy==3.7.2
 # Note: fr_core_news_sm sera téléchargé lors du premier run
+
+redis

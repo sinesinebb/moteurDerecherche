@@ -9,9 +9,11 @@ pydantic
 confluent-kafka[async]
 # confluent-kafka
 beautifulsoup4>=4.12.0
-lxml>=4.9.0       
+lxml>=4.9.0,<5.0.0       
 html5lib>=1.1    
 aiokafka>=0.8.0
-requests   # facultatif, si tu préfères requests pour health checks
+requests 
 html2text==2020.1.16
-
+aiohttp
+trafilatura>=1.6.0
+lxml_html_clean

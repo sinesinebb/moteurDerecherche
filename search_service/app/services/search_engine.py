@@ -40,7 +40,7 @@ class AdvancedSearchEngine:
     
     def __init__(self, es_client: AsyncElasticsearch):
         self.es = es_client
-        self.index_name = "documents"
+        self.index_name = getattr(settings, "ELASTICSEARCH_INDEX", "tech_docs")
         self.settings = self._get_index_settings()
         self.mappings = self._get_index_mappings()
         
@@ -490,7 +490,7 @@ class AdvancedSearchEngine:
                     },
                     "query_weight": 0.7,
                     "rescore_query_weight": 1.2
-                }
+                } 
             }
         ]
     
@@ -501,6 +501,27 @@ class AdvancedSearchEngine:
         for hit in es_response['hits']['hits']:
             source = hit['_source']
             highlight = hit.get('highlight', {})
+            
+            # Extraction des métadonnées YouTube si présentes
+            youtube_metadata = None
+            if source.get('content_type') == 'youtube_video' and 'youtube_metadata' in source:
+                yt = source['youtube_metadata']
+                youtube_metadata = {
+                    "title": yt.get("title"),
+                    "description": yt.get("description"),
+                    "tags": yt.get("tags", []),
+                    "view_count": yt.get("view_count", 0),
+                    "like_count": yt.get("like_count", 0),
+                    "duration_seconds": yt.get("duration_seconds"),
+                    "thumbnail": yt.get("thumbnail"),
+                    "watch_url": yt.get("watch_url") or yt.get("url"),
+                    "embed_url": yt.get("embed_url"),
+                    "channel_title": yt.get("channel_title"),
+                    "published_at": yt.get("published_at"),
+                }
+                # Surcharge du titre si nécessaire
+                if not source.get('title') or source.get('title') == 'YouTube':
+                    source['title'] = yt.get('title', source.get('title', ''))
             
             result = SearchResult(
                 id=hit['_id'],
@@ -515,10 +536,8 @@ class AdvancedSearchEngine:
                 relevance_score=hit['_score'],
                 rank=len(results) + 1,
                 highlights=highlight,
-                author=source.get('author'),
-                technical_level=source.get('technical_level'),
-                quality_score=source.get('quality_score', 0.0),
-                metadata=source.get('metadata', {})
+                # pas de author, technical_level, quality_score dans ton SearchResult actuel
+                youtube_metadata=youtube_metadata
             )
             results.append(result)
         

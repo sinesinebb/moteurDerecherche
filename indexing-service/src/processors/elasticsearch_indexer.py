@@ -165,7 +165,7 @@ def _doc_to_action(index_name: str, doc: Any, id_field: Optional[str] = None, ve
     """
     Convert a document (dict or object-like) to an action for helpers.bulk.
 
-    - id_field: if provided, look for that name as id
+    - id_field: if provided, look for that name as id (fallback)
     - vector_field_name: if provided and doc has 'embedding', will put it in _source
     """
     src: Dict[str, Any] = {}
@@ -174,7 +174,7 @@ def _doc_to_action(index_name: str, doc: Any, id_field: Optional[str] = None, ve
     if isinstance(doc, dict):
         # Pour les dicts, copier tous les champs sauf ceux réservés
         for k, v in doc.items():
-            if k in ("id", "embedding"):
+            if k in ("id", "_id", "embedding"):
                 continue
             src[k] = v
     else:
@@ -207,22 +207,26 @@ def _doc_to_action(index_name: str, doc: Any, id_field: Optional[str] = None, ve
 
     action: Dict[str, Any] = {"_index": index_name, "_source": src}
 
-    # id resolution - utiliser l'URL comme ID pour éviter les doublons
-    url = _get_field_from_doc(doc, "url", None)
-    if url is not None:
-        action["_id"] = url
+    # --- PRIORITÉ 1 : Si le document contient déjà un champ '_id' (non vide) ---
+    if isinstance(doc, dict) and "_id" in doc and doc["_id"]:
+        action["_id"] = doc["_id"]
     else:
-        # Fallback aux autres méthodes d'ID
-        if id_field:
-            ident = _get_field_from_doc(doc, id_field, None)
-            if ident is not None:
-                action["_id"] = ident
+        # --- PRIORITÉ 2 : Utiliser l'URL comme ID, mais seulement si elle est non vide ---
+        url = _get_field_from_doc(doc, "url", None)
+        if url is not None and url != "":
+            action["_id"] = url
         else:
-            ident = _get_field_from_doc(doc, "id", None)
-            if ident is not None:
-                action["_id"] = ident
+            # --- PRIORITÉ 3 : Fallback sur id_field ou champ 'id' ---
+            if id_field:
+                ident = _get_field_from_doc(doc, id_field, None)
+                if ident is not None:
+                    action["_id"] = ident
+            else:
+                ident = _get_field_from_doc(doc, "id", None)
+                if ident is not None:
+                    action["_id"] = ident
 
-    # DEBUG: show prepared action (helps understand what will be sent to helpers.bulk)
+    # DEBUG: show prepared action
     try:
         logger.debug("Prepared action for bulk: %s", {k: v for k, v in action.items() if k != '_source'})
         logger.debug("Document fields: %s", list(src.keys()))

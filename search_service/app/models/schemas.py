@@ -34,6 +34,7 @@ class SearchResult(BaseModel):
     relevance_score: float = Field(0.0, ge=0.0, le=1.0)
     rank: Optional[int]
     highlights: Optional[Dict[str, List[str]]] = Field(default_factory=dict)
+    youtube_metadata: Optional[Dict[str, Any]] = None 
 
 class SearchResponse(BaseModel):
     query: str
@@ -72,3 +73,4 @@ class SearchPreferences(BaseModel):
     show_highlights: bool = True
     safe_search: bool = True
     preferred_domains: List[str] = Field(default_factory=list)
+
