@@ -157,3 +157,9 @@ moteur-recherche-frontend/node_modules/
 
 # Médias utilisateurs
 user-service/user_service/media/
+
+
+# Secrets et certificats
+**/.env
+**/*.pem
+nginx-gateway/ssl/
