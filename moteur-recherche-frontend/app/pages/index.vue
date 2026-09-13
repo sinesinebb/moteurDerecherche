@@ -1,15 +1,12 @@
 <template>
   <div :class="[themeStore.isDarkMode ? 'dark' : '', 'min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 overflow-hidden']">
-    <!-- Fond avec particules animées subtiles -->
-    <div class="fixed inset-0 overflow-hidden pointer-events-none">
-      <div class="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]">
-        <div class="absolute inset-0" style="
-          background-image: radial-gradient(circle at 25% 25%, #3b82f6 2px, transparent 0),
-                            radial-gradient(circle at 75% 75%, #8b5cf6 1px, transparent 0);
-          background-size: 60px 60px;
-        "></div>
-      </div>
-    </div>
+    <!-- Animation du réseau neuronal en arrière-plan -->
+    <canvas 
+      ref="bgCanvas" 
+      class="fixed inset-0 w-full h-full pointer-events-none"
+      style="z-index: 0;"
+    ></canvas>
+
     <!-- Menu utilisateur en haut à droite -->
     <div class="fixed top-6 right-6 z-50">
       <div class="relative">
@@ -207,7 +204,7 @@
             <!-- Pied du menu -->
             <div class="px-6 py-4 bg-gray-50/50 dark:bg-gray-900/30 border-t border-gray-200/50 dark:border-gray-700/50">
               <p class="text-xs text-gray-500 dark:text-gray-400 text-center">
-                Version 1.0.0 • © 2026 Search.dev
+                Version 1.0.0 • © 2026 Luka
               </p>
             </div>
           </div>
@@ -218,60 +215,37 @@
 
     <!-- Contenu principal centré -->
     <div class="relative min-h-screen flex flex-col items-center justify-center px-4 pt-12 pb-8">
-      <!-- Logo élégant au-dessus de la barre de recherche -->
-      <div class="mb-10 animate-fade-in-down">
-        <!-- Logo avec effet 3D -->
-        <div class="relative mb-6">
-          <div class="w-32 h-32 mx-auto">
-            <!-- Effet d'ombre portée -->
-            <div class="absolute inset-0 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full blur-xl opacity-30 animate-pulse-slow"></div>
-            
-            <!-- Logo principal -->
-            <div class="relative w-32 h-32 rounded-full bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 p-2 shadow-2xl animate-float">
-              <div class="w-full h-full bg-white/10 dark:bg-gray-900/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/20 dark:border-gray-700/30">
-                <div class="w-24 h-24 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 p-2 shadow-inner">
-                  <div class="w-full h-full bg-white/90 dark:bg-gray-900/90 rounded-full flex items-center justify-center shadow-lg">
-                    <div class="relative">
-                      <span class="text-4xl">🔍</span>
-                      <!-- Effet de lueur interne -->
-                      <div class="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-purple-500/20 rounded-full blur-md"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Nom du site avec effet gradient animé -->
-        <div class="text-center">
-          <h1 class="text-5xl md:text-6xl font-bold mb-2">
-            <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 animate-gradient bg-[length:200%_auto]">
-              Search<span class="font-light">.dev</span>
-            </span>
-          </h1>
+      <!-- Logo "Luka" -->
+      <div class="mb-10 transform transition-all duration-500 hover:scale-105 cursor-default">
+        <h1 class="text-center font-cursive text-7xl md:text-8xl lg:text-9xl font-bold tracking-wide" 
+            style="font-family: 'Great Vibes', 'Dancing Script', 'Pacifico', cursive; 
+                   text-shadow: 0 8px 25px rgba(0,0,0,0.10), 0 2px 5px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.4);">
           
-          <!-- Tagline élégante -->
-          <div class="mt-4 flex items-center justify-center space-x-3">
-            <div class="flex items-center space-x-1">
-              <div class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-              <span class="text-xs text-gray-600 dark:text-gray-400">Index temps réel</span>
-            </div>
-            <div class="flex items-center space-x-1">
-              <div class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse delay-150"></div>
-              <span class="text-xs text-gray-600 dark:text-gray-400">Résultats intelligents</span>
-            </div>
-            <div class="flex items-center space-x-1">
-              <div class="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse delay-300"></div>
-              <span class="text-xs text-gray-600 dark:text-gray-400">Confidentialité</span>
-            </div>
-          </div>
-        </div>
+          <!-- L en dégradé vert -->
+          <span style="background: linear-gradient(135deg, #009543 0%, #00d961 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; padding: 0 2px;">
+            L
+          </span>
+          
+          <!-- u en dégradé jaune doré -->
+          <span style="background: linear-gradient(135deg, #FFD100 0%, #ffb700 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; padding: 0 2px;">
+            u
+          </span>
+
+          <!-- k en dégradé jaune doré -->
+          <span style="background: linear-gradient(135deg, #FFD100 0%, #ffb700 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; padding: 0 2px;">
+            k
+          </span>
+          
+          <!-- a en dégradé rouge -->
+          <span style="background: linear-gradient(135deg, #CE1126 0%, #ff1a40 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; padding: 0 2px;">
+            a
+          </span>
+          
+        </h1>
       </div>
 
-      <!-- Barre de recherche élégante au centre (très fine et arrondie) -->
+      <!-- Barre de recherche -->
       <div class="w-full max-w-2xl mb-10">
-        <!-- Effet de lumière autour de la barre de recherche -->
         <div 
           class="absolute -inset-6 bg-gradient-to-r from-blue-400/0 via-blue-400/20 to-blue-400/0 dark:from-blue-500/0 dark:via-blue-500/15 dark:to-blue-500/0 rounded-full blur-2xl transition-all duration-1000"
           :class="{ 
@@ -281,19 +255,15 @@
         ></div>
         
         <div class="relative">
-          <!-- Barre de recherche avec effet glassmorphism (très fine et arrondie) -->
           <div 
             class="relative bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-full border transition-all duration-500 shadow-lg overflow-hidden group"
             :class="isFocused || searchQuery.length > 0 
               ? 'border-blue-400 dark:border-blue-500 scale-[1.02] shadow-xl' 
               : 'border-transparent hover:border-blue-200 dark:hover:border-gray-700'"
           >
-            <!-- Effet de brillance interne -->
             <div class="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-transparent to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
             
-            <!-- Conteneur de la barre de recherche (très fine) -->
             <div class="relative flex items-center px-4 py-2">
-              <!-- Icône de recherche -->
               <div class="mr-2">
                 <svg 
                   class="w-4 h-4 transition-all duration-300" 
@@ -308,7 +278,6 @@
                 </svg>
               </div>
               
-              <!-- Champ de recherche (très fin) -->
               <input
                 ref="searchInput"
                 v-model="searchQuery"
@@ -322,7 +291,6 @@
                 autocomplete="off"
               />
               
-              <!-- Bouton de recherche avec effet hover (petit) -->
               <button 
                 @click="handleSearch"
                 class="ml-2 w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center hover:shadow-lg hover:scale-110 transition-all duration-300 shadow-md relative overflow-hidden group/search-btn"
@@ -330,7 +298,6 @@
                   ? 'opacity-100 from-blue-500 to-purple-600' 
                   : 'opacity-70 from-gray-400 to-gray-500 dark:from-gray-600 dark:to-gray-700'"
               >
-                <!-- Effet de brillance sur le bouton -->
                 <div class="absolute inset-0 bg-white/20 opacity-0 group-hover/search-btn:opacity-100 transition-opacity duration-300"></div>
                 
                 <svg class="w-3.5 h-3.5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -339,14 +306,13 @@
               </button>
             </div>
             
-            <!-- Effet de lumière bas (seulement quand focus) -->
             <div 
               v-if="isFocused || searchQuery.length > 0"
               class="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-3/4 h-0.5 bg-gradient-to-r from-transparent via-blue-400 to-transparent blur-sm"
             ></div>
           </div>
 
-          <!-- Suggestions de recherche élégantes -->
+          <!-- Suggestions de recherche -->
           <transition
             enter-active-class="transition duration-300 ease-out"
             enter-from-class="transform -translate-y-3 opacity-0"
@@ -360,7 +326,6 @@
               class="absolute top-full left-0 right-0 mt-2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl rounded-xl shadow-lg border border-gray-200/50 dark:border-gray-700/50 overflow-hidden z-40"
             >
               <div class="max-h-48 overflow-y-auto custom-scrollbar">
-                <!-- Suggestions d'autocomplétion -->
                 <div v-if="autocompleteSuggestions.length > 0">
                   <div class="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100/50 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-900/30">
                     Suggestions de recherche
@@ -388,19 +353,8 @@
         </div>
       </div>
 
-      <!-- Boutons des sites informatiques importants -->
+      <!-- Boutons des sites informatiques -->
       <div class="w-full max-w-5xl mb-8">
-        <div class="text-center mb-4">
-          <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-1">
-            <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
-              Ressources Informatiques
-            </span>
-          </h2>
-          <p class="text-xs text-gray-600 dark:text-gray-400 max-w-xl mx-auto">
-            Accédez rapidement aux meilleures ressources informatiques et à notre partenaire académique
-          </p>
-        </div>
-
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 px-2">
           <!-- GitHub -->
           <a 
@@ -511,37 +465,6 @@
           </a>
         </div>
       </div>
-
-      <!-- Informations supplémentaires (visible en bas) -->
-      <div class="absolute bottom-4 left-0 right-0">
-        <div class="text-center">
-          <div class="inline-flex items-center space-x-6 text-gray-400 dark:text-gray-500 text-xs">
-            <!-- Statistiques -->
-            <div class="flex items-center space-x-2">
-              <div class="text-right">
-                <div class="font-bold text-gray-700 dark:text-gray-300 text-sm">9</div>
-                <div class="text-xs">Microservices</div>
-              </div>
-              <div class="w-6 h-px bg-gradient-to-r from-gray-300 to-transparent dark:from-gray-600"></div>
-            </div>
-            
-            <div class="flex items-center space-x-2">
-              <div class="text-right">
-                <div class="font-bold text-gray-700 dark:text-gray-300 text-sm">12K+</div>
-                <div class="text-xs">Documents indexés</div>
-              </div>
-              <div class="w-6 h-px bg-gradient-to-r from-gray-300 to-transparent dark:from-gray-600"></div>
-            </div>
-            
-            <div class="flex items-center space-x-2">
-              <div class="text-right">
-                <div class="font-bold text-gray-700 dark:text-gray-300 text-sm">&lt;100ms</div>
-                <div class="text-xs">Temps de réponse</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -583,6 +506,120 @@ const displayName = computed(() => authStore.displayName)
 const userEmail = computed(() => authStore.userEmail)
 const userInitial = computed(() => authStore.userInitial)
 const userPhoto = computed(() => authStore.userPhoto)
+
+// ---------- Arrière-plan réseau neuronal accentué ----------
+const bgCanvas = ref<HTMLCanvasElement | null>(null)
+let animationFrameId: number | null = null
+let nodes: { x: number; y: number; vx: number; vy: number }[] = []
+let time = 0
+
+const NODE_COUNT = 80
+const MAX_DIST = 200
+const MAX_ALPHA = 0.25
+const NODE_ALPHA = 0.35
+const NODE_RADIUS = 2.5
+
+function initNodes(width: number, height: number) {
+  nodes = Array.from({ length: NODE_COUNT }, () => ({
+    x: Math.random() * width,
+    y: Math.random() * height,
+    vx: (Math.random() - 0.5) * 0.15,
+    vy: (Math.random() - 0.5) * 0.15,
+  }))
+}
+
+function draw() {
+  const canvas = bgCanvas.value
+  if (!canvas) return
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+
+  const w = canvas.width / (window.devicePixelRatio || 1)
+  const h = canvas.height / (window.devicePixelRatio || 1)
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+  const isDark = themeStore.isDarkMode
+  const lineColor = isDark ? '100, 160, 255' : '59, 130, 246'
+  const nodeColor = isDark ? '160, 180, 255' : '99, 102, 241'
+
+  // Connexions impulsionnelles
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const a = nodes[i]
+      const b = nodes[j]
+      const dx = a.x - b.x
+      const dy = a.y - b.y
+      const dist = Math.sqrt(dx * dx + dy * dy)
+
+      if (dist < MAX_DIST) {
+        const pulse = Math.sin(time * 1.5 + (i + j) * 0.7) * 0.5 + 0.5
+        const distanceFade = 1 - dist / MAX_DIST
+        const alpha = pulse * distanceFade * MAX_ALPHA
+
+        if (alpha > 0.005) {
+          ctx.beginPath()
+          ctx.moveTo(a.x, a.y)
+          ctx.lineTo(b.x, b.y)
+          ctx.strokeStyle = `rgba(${lineColor},${alpha})`
+          ctx.lineWidth = 0.8
+          ctx.stroke()
+        }
+      }
+    }
+  }
+
+  // Nœuds
+  for (const n of nodes) {
+    const pulseRadius = NODE_RADIUS + Math.sin(time * 2 + n.x * 0.01) * 0.5
+    ctx.beginPath()
+    ctx.arc(n.x, n.y, pulseRadius, 0, Math.PI * 2)
+    ctx.fillStyle = `rgba(${nodeColor},${NODE_ALPHA})`
+    ctx.fill()
+  }
+
+  // Mise à jour positions
+  for (const n of nodes) {
+    n.x += n.vx
+    n.y += n.vy
+    if (n.x < 0 || n.x > w) n.vx *= -1
+    if (n.y < 0 || n.y > h) n.vy *= -1
+    n.x = Math.max(0, Math.min(w, n.x))
+    n.y = Math.max(0, Math.min(h, n.y))
+  }
+
+  time += 0.01
+}
+
+function resizeCanvas() {
+  const canvas = bgCanvas.value
+  if (!canvas) return
+  const dpr = window.devicePixelRatio || 1
+  const width = window.innerWidth
+  const height = window.innerHeight
+  canvas.width = width * dpr
+  canvas.height = height * dpr
+  canvas.style.width = `${width}px`
+  canvas.style.height = `${height}px`
+  const ctx = canvas.getContext('2d')
+  if (ctx) ctx.scale(dpr, dpr)
+  initNodes(width, height)
+}
+
+function startAnimation() {
+  const animate = () => {
+    draw()
+    animationFrameId = requestAnimationFrame(animate)
+  }
+  animate()
+}
+
+function stopAnimation() {
+  if (animationFrameId !== null) {
+    cancelAnimationFrame(animationFrameId)
+    animationFrameId = null
+  }
+}
 
 // Données d'autocomplétion simulées
 const autocompleteData = [
@@ -644,7 +681,6 @@ const handleClickOutside = (event: MouseEvent) => {
     isUserMenuOpen.value = false
   }
   
-  // Fermer les suggestions si on clique en dehors
   if (showSuggestions.value && 
       searchInput.value && 
       !searchInput.value.contains(event.target as Node) &&
@@ -692,7 +728,6 @@ const handleTyping = () => {
   if (typingTimer) clearTimeout(typingTimer)
   if (suggestionsTimer) clearTimeout(suggestionsTimer)
   
-  // Afficher les suggestions après un délai
   suggestionsTimer = setTimeout(() => {
     showSuggestions.value = searchQuery.value.length > 0
   }, 200)
@@ -726,21 +761,14 @@ const preventScroll = (e: WheelEvent) => {
 
 // Initialisation
 onMounted(() => {
-  // Initialiser le thème
   themeStore.initializeTheme()
-  
-  // Charger l'utilisateur
   authStore.loadFromStorage()
   
-  // Focus sur la barre de recherche
   setTimeout(() => {
     searchInput.value?.focus()
   }, 800)
 
-  // Écouter les clics en dehors du menu
   document.addEventListener('click', handleClickOutside)
-
-  // Écouter les touches du clavier
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       showSuggestions.value = false
@@ -751,92 +779,31 @@ onMounted(() => {
       searchInput.value?.focus()
     }
   })
-
-  // Empêcher le défilement avec la roulette
   document.addEventListener('wheel', preventScroll, { passive: false })
+
+  // Initialisation du canvas neuronal
+  resizeCanvas()
+  window.addEventListener('resize', resizeCanvas)
+  startAnimation()
 })
 
 onUnmounted(() => {
-  // Nettoyer les écouteurs d'événements
   document.removeEventListener('click', handleClickOutside)
   document.removeEventListener('wheel', preventScroll)
+  stopAnimation()
+  window.removeEventListener('resize', resizeCanvas)
 })
 </script>
 
 <style scoped>
-/* Empêcher le défilement */
+/* --- Import de la police calligraphique "Great Vibes" --- */
+@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
+
 html, body {
   overflow: hidden;
   height: 100%;
 }
 
-/* Animations personnalisées */
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0) rotate(0deg);
-  }
-  50% {
-    transform: translateY(-8px) rotate(0.5deg);
-  }
-}
-
-@keyframes gradient {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-@keyframes fadeInDown {
-  from {
-    opacity: 0;
-    transform: translateY(-15px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes pulse-slow {
-  0%, 100% {
-    opacity: 0.3;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-.animate-float {
-  animation: float 6s ease-in-out infinite;
-}
-
-.animate-gradient {
-  animation: gradient 3s ease infinite;
-}
-
-.animate-fade-in-down {
-  animation: fadeInDown 0.6s ease-out;
-}
-
-.animate-pulse-slow {
-  animation: pulse-slow 3s ease-in-out infinite;
-}
-
-.delay-150 {
-  animation-delay: 150ms;
-}
-
-.delay-300 {
-  animation-delay: 300ms;
-}
-
-/* Scrollbar personnalisée */
 .custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: #cbd5e1 transparent;
@@ -864,28 +831,14 @@ html, body {
   background: linear-gradient(to bottom, #60a5fa, #a78bfa);
 }
 
-/* Effets de transition pour les inputs */
 input {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Effet de brillance pour la barre de recherche focus */
-.group:focus-within .search-glow {
-  opacity: 1;
-  transform: scale(1.02);
-}
-
-/* Amélioration des bordures gradients */
-.border-gradient {
-  border-image: linear-gradient(to right, #3b82f6, #8b5cf6) 1;
-}
-
-/* Empêcher la sélection de texte */
 * {
   user-select: none;
 }
 
-/* Permettre la sélection seulement dans les inputs */
 input {
   user-select: text;
 }

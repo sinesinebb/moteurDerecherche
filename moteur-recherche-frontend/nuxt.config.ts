@@ -46,9 +46,11 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE || '',
-      wsBaseUrl: process.env.NUXT_PUBLIC_WS_BASE || 'ws://localhost/ws',   // ← ajout
+      wsBaseUrl: process.env.NUXT_PUBLIC_WS_BASE || 'ws://localhost/ws',
       appName: process.env.NUXT_PUBLIC_APP_NAME || 'TechSearch Engine',
-      appVersion: process.env.NUXT_PUBLIC_APP_VERSION || '1.0.0'
+      appVersion: process.env.NUXT_PUBLIC_APP_VERSION || '1.0.0',
+      // chatbotUrl: process.env.NUXT_PUBLIC_CHATBOT_URL || '/api/ln/chat/completions'
+      chatbotUrl: process.env.NUXT_PUBLIC_CHATBOT_URL || 'http://localhost/api/ln/chat/completions'
     }
   },
   
@@ -56,7 +58,9 @@ export default defineNuxtConfig({
   
   app: {
     head: {
-      title: 'TechSearch - Moteur de Recherche Informatique',
+      title: 'Luka',
+      // Template pour les sous-pages 
+      titleTemplate: '%s | Luka',
       htmlAttrs: { lang: 'fr' },
       meta: [
         { charset: 'utf-8' },
@@ -65,7 +69,7 @@ export default defineNuxtConfig({
         { name: 'theme-color', content: '#3b82f6' }
       ],
       link: [
-        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
+         {rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
         { 
           rel: 'stylesheet', 
           href: 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap' 

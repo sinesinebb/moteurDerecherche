@@ -3,7 +3,7 @@
     <header class="sticky top-0 z-50 bg-white/80 dark:bg-[#202124]/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-700 shadow-sm">
       <div class="max-w-7xl mx-auto px-4 py-4">
         <div class="flex items-center justify-between">
-          <!-- Logo Search.dev -->
+          <!-- LOGO LUKA STYLÉ & PREMIUM (Version Dégradée & Calligraphique) -->
           <NuxtLink to="/" class="flex items-center space-x-2 group">
             <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 p-1 group-hover:scale-105 transition-transform duration-300">
               <div class="w-full h-full bg-white dark:bg-[#202124] rounded-full flex items-center justify-center">
@@ -11,9 +11,27 @@
               </div>
             </div>
             <div class="flex flex-col">
-              <span class="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Search<span class="font-light">.dev</span>
-              </span>
+               <h1 
+                class="text-3xl md:text-4xl font-bold transition-all duration-300 hover:scale-105 cursor-default"
+                style="font-family: 'Great Vibes', 'Dancing Script', 'Pacifico', cursive; text-shadow: 0 2px 4px rgba(0,0,0,0.1);"
+              >
+                <!-- L en dégradé vert -->
+                <span style="background: linear-gradient(135deg, #009543 0%, #00d961 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; padding: 0 1px;">
+                  L
+                </span>
+                <!-- u en dégradé jaune -->
+                <span style="background: linear-gradient(135deg, #FFD100 0%, #ffb700 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; padding: 0 1px;">
+                  u
+                </span>
+                <!-- k en dégradé jaune doré -->
+                <span style="background: linear-gradient(135deg, #FFD100 0%, #ffb700 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; padding: 0 2px;">
+                  k
+                </span>
+                <!-- a en dégradé rouge -->
+                <span style="background: linear-gradient(135deg, #CE1126 0%, #ff1a40 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; padding: 0 2px;">
+                  a
+                </span>
+              </h1>
             </div>
           </NuxtLink>
 
@@ -232,7 +250,7 @@
                     </template>
                   </div>
                   <div class="px-6 py-4 bg-gray-50 dark:bg-[#202124] border-t border-gray-200 dark:border-gray-700">
-                    <p class="text-xs text-gray-500 dark:text-gray-400 text-center">Version 1.0.0 • © 2024 Search.dev</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 text-center">Version 1.0.0 • © 2026 Luka</p>
                   </div>
                 </div>
               </transition>
@@ -243,11 +261,22 @@
         <!-- Navigation Links -->
         <div class="flex items-center justify-center space-x-8 mt-4">
           <NuxtLink to="/search" class="text-gray-700 dark:text-[#e8eaed] hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-lg text-sm font-medium transition-colors" :class="{ 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400': $route.path === '/search' || $route.path === '/' }">Tous</NuxtLink>
-          <NuxtLink to="/images" class="text-gray-700 dark:text-[#e8eaed] hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-lg text-sm font-medium transition-colors" :class="{ 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400': $route.path === '/images' }">Images</NuxtLink>
+          <!-- <NuxtLink to="/images" class="text-gray-700 dark:text-[#e8eaed] hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-lg text-sm font-medium transition-colors" :class="{ 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400': $route.path === '/images' }">Images</NuxtLink> -->
           <NuxtLink to="/videos" class="text-gray-700 dark:text-[#e8eaed] hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-lg text-sm font-medium transition-colors" :class="{ 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400': $route.path === '/videos' }">Vidéos</NuxtLink>
           <NuxtLink to="/docs" class="text-gray-700 dark:text-[#e8eaed] hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-lg text-sm font-medium transition-colors" :class="{ 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400': $route.path === '/docs' }">Documents</NuxtLink>
           <NuxtLink to="/advanced-search" class="text-gray-700 dark:text-[#e8eaed] hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-lg text-sm font-medium transition-colors" :class="{ 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400': $route.path === '/advanced-search' }">Recherche avancée</NuxtLink>
           <NuxtLink v-if="user?.role === 'admin'" to="/admin" class="text-gray-700 dark:text-[#e8eaed] hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-lg text-sm font-medium transition-colors" :class="{ 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400': $route.path.startsWith('/admin') }">Administration</NuxtLink>
+          <NuxtLink 
+            to="/syne" 
+            class="text-gray-700 dark:text-[#e8eaed] hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+            :class="{ 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400': $route.path === '/syne' }">
+            <span class="flex items-center gap-1">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+              </svg>
+              Syne
+            </span>
+          </NuxtLink>
         </div>
       </div>
     </header>
@@ -263,9 +292,9 @@
           <div class="space-y-4">
             <div class="flex items-center space-x-2">
               <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 p-0.5"><div class="w-full h-full bg-white dark:bg-[#202124] rounded-full flex items-center justify-center"><span class="text-sm">🔍</span></div></div>
-              <div><span class="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Search.dev</span><p class="text-xs text-gray-500 dark:text-gray-400">Recherche intelligente</p></div>
+              <div><span class="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Luka</span><p class="text-xs text-gray-500 dark:text-gray-400">Recherche intelligente</p></div>
             </div>
-            <p class="text-sm text-gray-600 dark:text-gray-400">Moteur de recherche spécialisé en informatique avec architecture microservices. Indexation en temps réel de contenus techniques et scientifiques.</p>
+            <p class="text-sm text-gray-600 dark:text-gray-400">Moteur de recherche spécialisé en informatique.</p>
           </div>
           <div><h4 class="font-semibold text-gray-900 dark:text-white mb-4 text-lg">À propos</h4><ul class="space-y-3"><li><NuxtLink to="/about" class="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-sm flex items-center"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>Notre mission</NuxtLink></li><li><NuxtLink to="/team" class="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-sm flex items-center"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>L'équipe</NuxtLink></li><li><NuxtLink to="/blog" class="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-sm flex items-center"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>Blog</NuxtLink></li></ul></div>
           <div><h4 class="font-semibold text-gray-900 dark:text-white mb-4 text-lg">Aide</h4><ul class="space-y-3"><li><NuxtLink to="/help" class="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-sm flex items-center"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" /></svg>Centre d'aide</NuxtLink></li><li><NuxtLink to="/faq" class="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-sm flex items-center"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>FAQ</NuxtLink></li><li><NuxtLink to="/contact" class="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-sm flex items-center"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>Contact</NuxtLink></li></ul></div>
@@ -273,14 +302,12 @@
         </div>
         <div class="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
           <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div class="text-gray-500 dark:text-gray-400 text-sm"><p>&copy; 2024 Search.dev. Tous droits réservés.</p><p class="mt-1">Respect de votre vie privée • Pas de tracking publicitaire</p></div>
+            <div class="text-gray-500 dark:text-gray-400 text-sm"><p>&copy; 2026 Luka. Tous droits réservés.</p><p class="mt-1">Respect de votre vie privée • Pas de tracking publicitaire</p></div>
             <div class="flex items-center space-x-6 text-sm"><NuxtLink to="/privacy" class="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Confidentialité</NuxtLink><NuxtLink to="/terms" class="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Conditions</NuxtLink><NuxtLink to="/cookies" class="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Cookies</NuxtLink></div>
           </div>
-          <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700"><div class="flex flex-wrap items-center justify-center gap-6 text-xs text-gray-500 dark:text-gray-400"><div class="flex items-center space-x-2"><div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div><span>Système opérationnel</span></div><div class="flex items-center space-x-2"><div class="w-2 h-2 rounded-full bg-blue-500 animate-pulse delay-150"></div><span>Index temps réel</span></div><div class="flex items-center space-x-2"><div class="w-2 h-2 rounded-full bg-purple-500 animate-pulse delay-300"></div><span>9 microservices</span></div><div class="flex items-center space-x-2"><div class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse delay-500"></div><span>&lt;100ms de réponse</span></div></div></div>
         </div>
       </div>
     </footer>
-    <NotificationsContainer />
   </div>
 </template>
 
@@ -385,6 +412,9 @@ onUnmounted(() => { document.removeEventListener('click', handleClickOutside) })
 </script>
 
 <style scoped>
+/* Import de la police Great Vibes pour le logo */
+@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
+
 @keyframes ping { 75%, 100% { transform: scale(1.5); opacity: 0; } }
 .animate-pulse { animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite; }
 .animate-pulse-slow { animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
@@ -396,4 +426,3 @@ onUnmounted(() => { document.removeEventListener('click', handleClickOutside) })
 .dark .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.03); }
 .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: linear-gradient(to bottom, #60a5fa, #a78bfa); }
 </style>
-

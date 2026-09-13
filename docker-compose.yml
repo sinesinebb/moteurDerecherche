@@ -601,32 +601,22 @@ services:
     image: moteur-recherche-frontend:latest
     container_name: frontend-nuxt
     environment:
-      # Environnement Nuxt
       NODE_ENV: production
-      # NUXT_PUBLIC_API_BASE: http://localhost
-      # NUXT_PUBLIC_API_BASE: http://localhost/api
       NUXT_PUBLIC_API_BASE: 
       NUXT_PUBLIC_APP_NAME: "Moteur de Recherche Informatique"
       NUXT_PUBLIC_APP_VERSION: "1.0.0"
       NUXT_PUBLIC_WS_BASE: ws://localhost/ws
-      
-      # Configuration serveur
+      # NUXT_PUBLIC_CHATBOT_URL: "http://chatbot-service:8007/api/ln/chat/completions"
+      NUXT_PUBLIC_CHATBOT_URL: "http://localhost/api/ln/chat/completions"
       HOST: 0.0.0.0
       PORT: 3000
       NITRO_PORT: 3000
       NITRO_HOST: 0.0.0.0
-      
-      # Network
       API_URL: http://nginx-gateway/api
-      
-      # Monitoring
       LOG_LEVEL: info
     ports:
       - "3000:3000"
     volumes: []
-      # Pour le développement, on peut monter le code source :
-      # - ./moteur-recherche-frontend:/app
-      # - /app/node_modules  # Empêche l'écrasement des node_modules
     healthcheck:
       test: ["CMD", "wget", "--spider", "http://localhost:3000/"]
       interval: 30s
@@ -696,6 +686,31 @@ services:
     networks:
       - moteur_network
 
+  chatbot-service:
+    build:
+      context: ./chatbot-service
+      dockerfile: Dockerfile
+    image: moteur-recherche-chatbot:latest
+    container_name: chatbot-service
+    environment:
+      - MODEL_PATH=/app/app/model/Syne-Coder-V2.gguf
+    ports:
+      - "8007:8007"
+    mem_limit: 12g
+    networks:
+      - moteur_network
+
+  # syne-api:
+  #   build: ./syne-api
+  #   container_name: syne-api
+  #   ports:
+  #     - "8000:8000"
+  #   environment:
+  #     - LLAMA_SERVER_URL=http://llama-server:8081/v1/chat/completions
+  #   networks:
+  #     - moteur_network
+  #   # depends_on si nécessaire
+
 volumes:
   zookeeper_data:
   kafka_data:
@@ -708,7 +723,7 @@ volumes:
   prometheus_data:
   grafana_data:
   nlp_vocab:
-
+  chatbot_model_cache:
 networks:
   moteur_network:
     driver: bridge

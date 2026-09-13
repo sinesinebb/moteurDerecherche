@@ -1,5 +1,6 @@
 <template>
-  <div class="relative min-h-screen flex items-center justify-center py-12 px-4">
+  <!-- AJOUT : Binding dynamique pour le mode sombre/clair -->
+  <div :class="[themeStore.isDarkMode ? 'dark' : '', 'relative min-h-screen flex items-center justify-center py-12 px-4']">
     <!-- Image de fond futuriste -->
     <div class="fixed inset-0 z-0">
       <img 
@@ -7,27 +8,57 @@
         alt="Information Technology Background"
         class="w-full h-full object-cover"
       />
-      <div class="absolute inset-0 bg-gradient-to-br from-black/60 via-black/40 to-black/60"></div>
-      <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(0,255,255,0.2)_1px,_transparent_1px)] bg-[length:32px_32px]"></div>
+      <!-- Overlay ajusté pour être plus clair en mode clair -->
+      <div class="absolute inset-0 bg-gradient-to-br from-black/20 via-white/30 to-black/20 dark:from-black/60 dark:via-black/40 dark:to-black/60"></div>
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(0,0,0,0.3)_1px,_transparent_1px)] dark:bg-[radial-gradient(circle_at_center,_rgba(0,255,255,0.2)_1px,_transparent_1px)] bg-[length:32px_32px]"></div>
     </div>
 
     <div class="relative z-10 max-w-md w-full space-y-8">
-      <div class="backdrop-blur-2xl bg-white/10 dark:bg-black/30 rounded-3xl shadow-2xl border border-white/30 dark:border-cyan-500/30 overflow-hidden transition-all duration-300 hover:shadow-cyan-500/20 hover:border-cyan-400/50">
+      <!-- Carte : Fond clair en mode jour, sombre en mode nuit -->
+      <div class="backdrop-blur-2xl bg-white/80 dark:bg-black/40 rounded-3xl shadow-2xl border border-gray-200 dark:border-cyan-500/30 overflow-hidden transition-all duration-300 hover:shadow-cyan-500/20 hover:border-cyan-400/50">
         
         <!-- En-tête -->
         <div class="px-8 pt-8 pb-6 bg-gradient-to-r from-cyan-500/10 to-purple-600/10 dark:from-cyan-900/30 dark:to-purple-900/30">
           <div class="flex flex-col items-center">
             <div class="w-24 h-24 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 p-1.5 mb-5 shadow-lg shadow-cyan-500/30 animate-pulse-glow">
-              <div class="w-full h-full bg-white/10 dark:bg-gray-900/40 rounded-full flex items-center justify-center backdrop-blur-sm">
+              <div class="w-full h-full bg-white/80 dark:bg-gray-900/40 rounded-full flex items-center justify-center backdrop-blur-sm">
                 <svg class="w-12 h-12 text-white drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                 </svg>
               </div>
             </div>
-            <h2 class="text-4xl font-bold tracking-tight text-center">
-              <span class="bg-gradient-to-r from-cyan-300 via-blue-400 to-purple-500 bg-clip-text text-transparent">Search.dev</span>
-            </h2>
-            <p class="mt-2 text-center text-white/80 font-light">
+            <!-- LOGO LUKA STYLÉ & PREMIUM (Version Dégradée & Calligraphique) -->
+            <NuxtLink to="/" class="flex items-center space-x-2 group">
+              <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 p-1 group-hover:scale-105 transition-transform duration-300">
+                <div class="w-full h-full bg-white dark:bg-[#202124] rounded-full flex items-center justify-center">
+                  <span class="text-xl">🔍</span>
+                </div>
+              </div>
+              <div class="flex flex-col">
+                <h1 
+                  class="text-3xl md:text-4xl font-bold transition-all duration-300 hover:scale-105 cursor-default"
+                  style="font-family: 'Great Vibes', 'Dancing Script', 'Pacifico', cursive; text-shadow: 0 2px 4px rgba(0,0,0,0.1);"
+                >
+                  <!-- L en dégradé vert -->
+                  <span style="background: linear-gradient(135deg, #009543 0%, #00d961 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; padding: 0 1px;">
+                    L
+                  </span>
+                  <!-- u en dégradé jaune -->
+                  <span style="background: linear-gradient(135deg, #FFD100 0%, #ffb700 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; padding: 0 1px;">
+                    u
+                  </span>
+                  <!-- k en dégradé jaune doré -->
+                  <span style="background: linear-gradient(135deg, #FFD100 0%, #ffb700 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; padding: 0 2px;">
+                    k
+                  </span>
+                  <!-- a en dégradé rouge -->
+                  <span style="background: linear-gradient(135deg, #CE1126 0%, #ff1a40 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; padding: 0 2px;">
+                    a
+                  </span>
+                </h1>
+              </div>
+            </NuxtLink>
+            <p class="mt-2 text-center text-gray-600 dark:text-white/80 font-light">
               Créez votre compte en quelques secondes
             </p>
           </div>
@@ -52,19 +83,19 @@
             >
               <div class="flex-shrink-0 mt-0.5">
                 <div class="w-6 h-6 rounded-full bg-red-500/30 flex items-center justify-center">
-                  <svg class="w-3.5 h-3.5 text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-3.5 h-3.5 text-red-500 dark:text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
                   </svg>
                 </div>
               </div>
               <div class="flex-1 min-w-0">
-                <p class="text-sm font-semibold text-red-200 leading-tight">{{ errorTitle }}</p>
-                <p class="text-xs text-red-300/80 mt-0.5 leading-relaxed">{{ errorMessage }}</p>
+                <p class="text-sm font-semibold text-red-700 dark:text-red-200 leading-tight">{{ errorTitle }}</p>
+                <p class="text-xs text-red-600/80 dark:text-red-300/80 mt-0.5 leading-relaxed">{{ errorMessage }}</p>
               </div>
               <button
                 type="button"
                 @click="clearError"
-                class="flex-shrink-0 text-red-300/60 hover:text-red-200 transition-colors mt-0.5"
+                class="flex-shrink-0 text-red-600/60 hover:text-red-700 dark:text-red-300/60 dark:hover:text-red-200 transition-colors mt-0.5"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -88,14 +119,14 @@
             >
               <div class="flex-shrink-0 mt-0.5">
                 <div class="w-6 h-6 rounded-full bg-green-500/30 flex items-center justify-center">
-                  <svg class="w-3.5 h-3.5 text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-3.5 h-3.5 text-green-600 dark:text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
               </div>
               <div class="flex-1 min-w-0">
-                <p class="text-sm font-semibold text-green-200 leading-tight">Compte créé avec succès !</p>
-                <p class="text-xs text-green-300/80 mt-0.5 leading-relaxed">{{ successMessage }}</p>
+                <p class="text-sm font-semibold text-green-700 dark:text-green-200 leading-tight">Compte créé avec succès !</p>
+                <p class="text-xs text-green-600/80 dark:text-green-300/80 mt-0.5 leading-relaxed">{{ successMessage }}</p>
               </div>
             </div>
           </Transition>
@@ -104,12 +135,12 @@
 
             <!-- Nom complet -->
             <div>
-              <label for="name" class="block text-sm font-medium text-white/80 mb-2 tracking-wide">
-                Nom complet <span class="text-cyan-300">*</span>
+              <label for="name" class="block text-sm font-medium text-gray-700 dark:text-white/80 mb-2 tracking-wide">
+                Nom complet <span class="text-cyan-600 dark:text-cyan-300">*</span>
               </label>
               <div class="relative group">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg class="h-5 w-5 text-cyan-300 group-focus-within:text-cyan-200 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="h-5 w-5 text-gray-400 dark:text-cyan-300 group-focus-within:text-cyan-500 dark:group-focus-within:text-cyan-200 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                 </div>
@@ -119,10 +150,10 @@
                   type="text"
                   required
                   :class="[
-                    'pl-10 w-full px-4 py-3 bg-white/10 dark:bg-black/30 backdrop-blur-sm border rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200',
+                    'pl-10 w-full px-4 py-3 bg-white dark:bg-black/30 border rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/50 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200',
                     fieldError.name
                       ? 'border-red-400/60 focus:ring-red-400'
-                      : 'border-white/30 focus:ring-cyan-400'
+                      : 'border-gray-300 dark:border-white/30 focus:ring-cyan-400'
                   ]"
                   placeholder="John Doe"
                   :disabled="loading"
@@ -130,7 +161,7 @@
                 />
                 <div class="absolute inset-0 rounded-xl pointer-events-none group-focus-within:shadow-[0_0_12px_#06b6d4] transition-shadow duration-300"></div>
               </div>
-              <p v-if="fieldError.name" class="mt-1.5 text-xs text-red-300 flex items-center gap-1">
+              <p v-if="fieldError.name" class="mt-1.5 text-xs text-red-600 dark:text-red-300 flex items-center gap-1">
                 <svg class="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
                 </svg>
@@ -140,12 +171,12 @@
 
             <!-- Email -->
             <div>
-              <label for="email" class="block text-sm font-medium text-white/80 mb-2 tracking-wide">
-                Adresse email <span class="text-cyan-300">*</span>
+              <label for="email" class="block text-sm font-medium text-gray-700 dark:text-white/80 mb-2 tracking-wide">
+                Adresse email <span class="text-cyan-600 dark:text-cyan-300">*</span>
               </label>
               <div class="relative group">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg class="h-5 w-5 text-cyan-300 group-focus-within:text-cyan-200 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="h-5 w-5 text-gray-400 dark:text-cyan-300 group-focus-within:text-cyan-500 dark:group-focus-within:text-cyan-200 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
                 </div>
@@ -155,10 +186,10 @@
                   type="email"
                   required
                   :class="[
-                    'pl-10 w-full px-4 py-3 bg-white/10 dark:bg-black/30 backdrop-blur-sm border rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200',
+                    'pl-10 w-full px-4 py-3 bg-white dark:bg-black/30 border rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/50 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200',
                     fieldError.email
                       ? 'border-red-400/60 focus:ring-red-400'
-                      : 'border-white/30 focus:ring-cyan-400'
+                      : 'border-gray-300 dark:border-white/30 focus:ring-cyan-400'
                   ]"
                   placeholder="email@exemple.com"
                   :disabled="loading"
@@ -166,7 +197,7 @@
                 />
                 <div class="absolute inset-0 rounded-xl pointer-events-none group-focus-within:shadow-[0_0_12px_#06b6d4] transition-shadow duration-300"></div>
               </div>
-              <p v-if="fieldError.email" class="mt-1.5 text-xs text-red-300 flex items-center gap-1">
+              <p v-if="fieldError.email" class="mt-1.5 text-xs text-red-600 dark:text-red-300 flex items-center gap-1">
                 <svg class="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
                 </svg>
@@ -176,12 +207,12 @@
 
             <!-- Mot de passe -->
             <div>
-              <label for="password" class="block text-sm font-medium text-white/80 mb-2 tracking-wide">
-                Mot de passe <span class="text-cyan-300">*</span>
+              <label for="password" class="block text-sm font-medium text-gray-700 dark:text-white/80 mb-2 tracking-wide">
+                Mot de passe <span class="text-cyan-600 dark:text-cyan-300">*</span>
               </label>
               <div class="relative group">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg class="h-5 w-5 text-cyan-300 group-focus-within:text-cyan-200 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="h-5 w-5 text-gray-400 dark:text-cyan-300 group-focus-within:text-cyan-500 dark:group-focus-within:text-cyan-200 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                   </svg>
                 </div>
@@ -192,10 +223,10 @@
                   required
                   minlength="6"
                   :class="[
-                    'pl-10 pr-10 w-full px-4 py-3 bg-white/10 dark:bg-black/30 backdrop-blur-sm border rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200',
+                    'pl-10 pr-10 w-full px-4 py-3 bg-white dark:bg-black/30 border rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/50 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200',
                     fieldError.password
                       ? 'border-red-400/60 focus:ring-red-400'
-                      : 'border-white/30 focus:ring-cyan-400'
+                      : 'border-gray-300 dark:border-white/30 focus:ring-cyan-400'
                   ]"
                   placeholder="••••••••"
                   :disabled="loading"
@@ -204,7 +235,7 @@
                 <button
                   type="button"
                   @click="showPassword = !showPassword"
-                  class="absolute inset-y-0 right-0 pr-3 flex items-center text-white/60 hover:text-white transition-colors"
+                  class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700 dark:text-white/60 dark:hover:text-white transition-colors"
                 >
                   <svg v-if="showPassword" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L6.59 6.59m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
@@ -225,7 +256,7 @@
                       'h-1 flex-1 rounded-full transition-all duration-300',
                       i <= passwordStrength.score
                         ? passwordStrength.color
-                        : 'bg-white/20'
+                        : 'bg-gray-200 dark:bg-white/20'
                     ]"
                   ></div>
                 </div>
@@ -233,7 +264,7 @@
                   {{ passwordStrength.label }}
                 </p>
               </div>
-              <p v-if="fieldError.password" class="mt-1.5 text-xs text-red-300 flex items-center gap-1">
+              <p v-if="fieldError.password" class="mt-1.5 text-xs text-red-600 dark:text-red-300 flex items-center gap-1">
                 <svg class="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
                 </svg>
@@ -243,12 +274,12 @@
 
             <!-- Confirmation mot de passe -->
             <div>
-              <label for="confirmPassword" class="block text-sm font-medium text-white/80 mb-2 tracking-wide">
-                Confirmer le mot de passe <span class="text-cyan-300">*</span>
+              <label for="confirmPassword" class="block text-sm font-medium text-gray-700 dark:text-white/80 mb-2 tracking-wide">
+                Confirmer le mot de passe <span class="text-cyan-600 dark:text-cyan-300">*</span>
               </label>
               <div class="relative group">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg class="h-5 w-5 text-cyan-300 group-focus-within:text-cyan-200 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="h-5 w-5 text-gray-400 dark:text-cyan-300 group-focus-within:text-cyan-500 dark:group-focus-within:text-cyan-200 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
                 </div>
@@ -258,12 +289,12 @@
                   :type="showConfirmPassword ? 'text' : 'password'"
                   required
                   :class="[
-                    'pl-10 pr-10 w-full px-4 py-3 bg-white/10 dark:bg-black/30 backdrop-blur-sm border rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200',
+                    'pl-10 pr-10 w-full px-4 py-3 bg-white dark:bg-black/30 border rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/50 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200',
                     fieldError.confirmPassword
                       ? 'border-red-400/60 focus:ring-red-400'
                       : form.confirmPassword && passwordsMatch
                       ? 'border-green-400/60 focus:ring-green-400'
-                      : 'border-white/30 focus:ring-cyan-400'
+                      : 'border-gray-300 dark:border-white/30 focus:ring-cyan-400'
                   ]"
                   placeholder="••••••••"
                   :disabled="loading"
@@ -273,14 +304,14 @@
                 <div class="absolute inset-y-0 right-8 flex items-center pr-1 pointer-events-none">
                   <svg
                     v-if="form.confirmPassword && passwordsMatch"
-                    class="w-4 h-4 text-green-400"
+                    class="w-4 h-4 text-green-600 dark:text-green-400"
                     fill="none" stroke="currentColor" viewBox="0 0 24 24"
                   >
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
                   </svg>
                   <svg
                     v-else-if="form.confirmPassword && !passwordsMatch"
-                    class="w-4 h-4 text-red-400"
+                    class="w-4 h-4 text-red-600 dark:text-red-400"
                     fill="none" stroke="currentColor" viewBox="0 0 24 24"
                   >
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
@@ -289,7 +320,7 @@
                 <button
                   type="button"
                   @click="showConfirmPassword = !showConfirmPassword"
-                  class="absolute inset-y-0 right-0 pr-3 flex items-center text-white/60 hover:text-white transition-colors"
+                  class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700 dark:text-white/60 dark:hover:text-white transition-colors"
                 >
                   <svg v-if="showConfirmPassword" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L6.59 6.59m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
@@ -301,19 +332,19 @@
                 </button>
                 <div class="absolute inset-0 rounded-xl pointer-events-none group-focus-within:shadow-[0_0_12px_#06b6d4] transition-shadow duration-300"></div>
               </div>
-              <p v-if="fieldError.confirmPassword" class="mt-1.5 text-xs text-red-300 flex items-center gap-1">
+              <p v-if="fieldError.confirmPassword" class="mt-1.5 text-xs text-red-600 dark:text-red-300 flex items-center gap-1">
                 <svg class="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
                 </svg>
                 {{ fieldError.confirmPassword }}
               </p>
-              <p v-else-if="form.confirmPassword && !passwordsMatch" class="mt-1.5 text-xs text-red-300 flex items-center gap-1">
+              <p v-else-if="form.confirmPassword && !passwordsMatch" class="mt-1.5 text-xs text-red-600 dark:text-red-300 flex items-center gap-1">
                 <svg class="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
                 </svg>
                 Les mots de passe ne correspondent pas
               </p>
-              <p v-else-if="form.confirmPassword && passwordsMatch" class="mt-1.5 text-xs text-green-400 flex items-center gap-1">
+              <p v-else-if="form.confirmPassword && passwordsMatch" class="mt-1.5 text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
                 <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
                 </svg>
@@ -347,9 +378,9 @@
 
           <!-- Lien vers connexion -->
           <div class="text-center">
-            <p class="text-sm text-white/60">
+            <p class="text-sm text-gray-600 dark:text-white/60">
               Déjà un compte ?
-              <NuxtLink to="/login" class="font-medium text-cyan-300 hover:text-cyan-200 transition-colors">
+              <NuxtLink to="/login" class="font-medium text-cyan-600 dark:text-cyan-300 hover:text-cyan-700 dark:hover:text-cyan-200 transition-colors">
                 Se connecter
               </NuxtLink>
             </p>
@@ -357,12 +388,12 @@
         </form>
 
         <!-- Pied de page -->
-        <div class="px-8 py-4 bg-white/5 dark:bg-black/20 border-t border-white/10">
-          <p class="text-xs text-white/50 text-center">
+        <div class="px-8 py-4 bg-gray-100/50 dark:bg-black/20 border-t border-gray-200 dark:border-white/10">
+          <p class="text-xs text-gray-500 dark:text-white/50 text-center">
             En vous inscrivant, vous acceptez nos
-            <a href="#" class="text-cyan-300 hover:underline">Conditions d'utilisation</a>
+            <a href="#" class="text-cyan-600 dark:text-cyan-300 hover:underline">Conditions d'utilisation</a>
             et notre
-            <a href="#" class="text-cyan-300 hover:underline">Politique de confidentialité</a>
+            <a href="#" class="text-cyan-600 dark:text-cyan-300 hover:underline">Politique de confidentialité</a>
           </p>
         </div>
       </div>
@@ -371,13 +402,17 @@
 </template>
 
 <script setup lang="ts">
+definePageMeta({ layout: false })
+
 import { ref, computed } from 'vue'
 import { useRouter } from '#app'
 import { useAuthStore } from '../../stores/auth.store'
 import { useNotifications } from '../../composables/useNotifications'
+import { useThemeStore } from '../../stores/theme.store' // IMPORT AJOUTÉ
 
 const router = useRouter()
 const authStore = useAuthStore()
+const themeStore = useThemeStore() // DÉCLARATION AJOUTÉE
 const { error: notifyError } = useNotifications()
 
 const form = ref({
@@ -429,10 +464,10 @@ const passwordStrength = computed(() => {
   if (/[^A-Za-z0-9]/.test(p)) score++
 
   const levels = [
-    { score: 1, color: 'bg-red-500',    textColor: 'text-red-300',    label: 'Très faible — ajoutez des chiffres et majuscules' },
-    { score: 2, color: 'bg-orange-400', textColor: 'text-orange-300', label: 'Faible — essayez d\'ajouter un caractère spécial' },
-    { score: 3, color: 'bg-yellow-400', textColor: 'text-yellow-300', label: 'Moyen — encore un effort !' },
-    { score: 4, color: 'bg-green-400',  textColor: 'text-green-300',  label: 'Fort — excellent mot de passe ✓' },
+    { score: 1, color: 'bg-red-500',    textColor: 'text-red-600 dark:text-red-300',    label: 'Très faible — ajoutez des chiffres et majuscules' },
+    { score: 2, color: 'bg-orange-400', textColor: 'text-orange-600 dark:text-orange-300', label: 'Faible — essayez d\'ajouter un caractère spécial' },
+    { score: 3, color: 'bg-yellow-400', textColor: 'text-yellow-600 dark:text-yellow-300', label: 'Moyen — encore un effort !' },
+    { score: 4, color: 'bg-green-400',  textColor: 'text-green-600 dark:text-green-300',  label: 'Fort — excellent mot de passe ✓' },
   ]
 
   return { score, ...levels[Math.min(score, 4) - 1] }

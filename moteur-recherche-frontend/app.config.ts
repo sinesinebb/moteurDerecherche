@@ -8,6 +8,6 @@ export default defineAppConfig({
   },
   
   // Votre configuration d'application
-  appName: 'TechSearch',
+  appName: 'Luka',
   appVersion: '1.0.0'
 } as AppConfig)

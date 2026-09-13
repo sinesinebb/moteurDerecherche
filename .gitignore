@@ -127,3 +127,33 @@ tmp/
 **/models/
 **/embeddings/elasticsearch-8.10.0/
 elasticsearch-8.10.0-windows-x86_64.zip
+
+
+# ==========
+# AWS
+# ==========
+aws-keys/
+*.pem
+
+
+
+
+
+
+
+# AWS et secrets
+aws-keys/
+*.pem
+.env
+.env.*
+
+# Modèle du chatbot (trop volumineux)
+chatbot-service/app/model/
+*.gguf
+
+# Node
+moteur-recherche-frontend/package-lock.json
+moteur-recherche-frontend/node_modules/
+
+# Médias utilisateurs
+user-service/user_service/media/

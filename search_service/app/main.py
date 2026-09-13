@@ -117,15 +117,17 @@ class TechnicalQueryAnalyzer:
             # Cuisine / alimentation
             "recette", "cuisine", "gâteau", "pâtisserie", "pain", "soupe", "salade", "poulet",
             "boeuf", "porc", "poisson", "riz", "pâtes", "chocolat", "dessert", "restaurant",
-            "recipe", "cooking", "baking", "food", "chicken", "beef", "pasta", "cake",
+            "recipe", "cooking", "baking", "food", "chicken", "beef", "pasta", "cake", "pain", "manioc",
+            "gateaux", "jus", "eau", "légume", "viande", "tomate", "fruit", "oseille", "arachide",
+            "boison",
             # Sport
             "football", "basketball", "tennis", "rugby", "natation", "cyclisme", "sport",
-            "gym", "musculation", "fitness", "marathon", "soccer", "baseball", "hockey",
+            "gym", "musculation", "fitness", "marathon", "soccer", "basketball", "hockey",
             "formule 1", "moto gp",
             # Musique / divertissement
             "chanson", "musique", "concert", "guitare", "piano", "batterie", "rock", "pop",
             "rap", "jazz", "musique classique", "album", "chanteur", "chanteuse",
-            "music", "song", "guitar", "drum", "band", "concert", "festival",
+            "music", "song", "guitar", "drum", "band", "concert", "festival", "film", "piano",
             # Actualités / politique
             "président", "élection", "gouvernement", "ministre", "actualité", "journal",
             "news", "president", "election", "government", "minister",
@@ -143,7 +145,7 @@ class TechnicalQueryAnalyzer:
             "hotel", "plane", "train", "beach", "mountain", "tourism",
             # Divers
             "météo", "horoscope", "crypto monnaie", "bitcoin", "nft",
-            "weather", "horoscope", "cryptocurrency", "bitcoin", "nft",
+            "weather", "horoscope", "cryptocurrency", "bitcoin", "nft", "pornograhie", "porno", "sexualité", "sex", 
         }
 
     def analyze_query(self, query: str) -> Dict[str, Any]:
@@ -439,7 +441,7 @@ def build_enhanced_query(query: str, query_analysis: Dict[str, Any],
         filters.append({"term": {"technical_metadata.has_code_examples": has_code_examples}})
     if file_type:
         filters.append({"term": {"file_type": file_type}})
-
+        
     query_body = {
         "query": {
             "bool": {

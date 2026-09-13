@@ -9,15 +9,27 @@
 </template> -->
 
 <!-- app.vue -->
-<template>
+<!-- <template>
   <div>
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>
   </div>
+</template> -->
+
+
+
+<template>
+  <div>
+    <!-- Si la route ne demande pas de layout, on n'utilise pas NuxtLayout -->
+    <NuxtLayout v-if="route.meta.layout !== false">
+      <NuxtPage />
+    </NuxtLayout>
+    <!-- Sinon, on rend la page directement sans layout -->
+    <NuxtPage v-else />
+  </div>
 </template>
 
 <script setup>
-// Pas besoin d'importer onMounted et useAuthStore ici
-// Les stores Pinia sont automatiquement disponibles avec @pinia/nuxt
+const route = useRoute()
 </script>

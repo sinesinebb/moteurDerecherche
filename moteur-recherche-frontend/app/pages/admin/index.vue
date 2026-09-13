@@ -6,68 +6,62 @@
     </div>
 
     <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 z-10">
-
-      <!-- ===== EN-TÊTE ===== -->
+      <!-- En-tête -->
       <div class="mb-12 animate-fade-in-down">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div class="flex-1">
-
-            <!-- Breadcrumb -->
-            <div class="flex items-center gap-2 mb-5 text-xs text-gray-400 dark:text-gray-500 tracking-widest uppercase font-medium">
-              <span>Panneau</span>
-              <span class="opacity-40">›</span>
-              <span class="text-cyan-600 dark:text-cyan-400">Administration</span>
-            </div>
-
-            <!-- Titre principal -->
-            <div class="flex items-start gap-5">
-              <!-- Ligne décorative verticale -->
-              <div class="hidden md:flex flex-col items-center pt-1 gap-1">
-                <div class="w-0.5 h-10 bg-gradient-to-b from-cyan-500 to-blue-600 dark:from-cyan-400 dark:to-purple-500 rounded-full"></div>
-                <div class="w-1.5 h-1.5 rounded-full bg-cyan-500 dark:bg-cyan-400"></div>
-              </div>
-
+            <div class="inline-flex items-center space-x-3 mb-4">
               <div>
-                <h1 class="text-4xl md:text-5xl font-black tracking-tight text-gray-900 dark:text-white leading-none">
-                  Administration
-                </h1>
-                <div class="mt-1">
-                  <span class="text-4xl md:text-5xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 dark:from-cyan-400 dark:via-blue-400 dark:to-purple-400 leading-none">
-                    Search.dev
-                  </span>
-                </div>
-
-                <!-- Identité utilisateur -->
-                <div class="mt-4 flex items-center gap-3 flex-wrap">
-                  <div class="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 dark:from-cyan-400 dark:to-purple-500 flex items-center justify-center shadow-md flex-shrink-0">
-                    <span class="text-white text-xs font-bold tracking-wide">
-                      {{ (displayName || 'A').split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase() }}
-                    </span>
+                <!-- LOGO LUKA STYLÉ & PREMIUM (Version Dégradée & Calligraphique) -->
+                <NuxtLink to="/" class="flex items-center space-x-2 group">
+                  <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 p-1 group-hover:scale-105 transition-transform duration-300">
+                    <div class="w-full h-full bg-white dark:bg-[#202124] rounded-full flex items-center justify-center">
+                      <span class="text-xl">🔍</span>
+                    </div>
                   </div>
-                  <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                    <span>Connecté en tant que</span>
-                    <span class="font-semibold text-gray-900 dark:text-white">{{ displayName }}</span>
+                  <div class="flex flex-col">
+                    <h1 
+                      class="text-3xl md:text-4xl font-bold transition-all duration-300 hover:scale-105 cursor-default"
+                      style="font-family: 'Great Vibes', 'Dancing Script', 'Pacifico', cursive; text-shadow: 0 2px 4px rgba(0,0,0,0.1);"
+                    >
+                      <!-- L en dégradé vert -->
+                      <span style="background: linear-gradient(135deg, #009543 0%, #00d961 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; padding: 0 1px;">
+                        L
+                      </span>
+                      <!-- u en dégradé jaune -->
+                      <span style="background: linear-gradient(135deg, #FFD100 0%, #ffb700 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; padding: 0 1px;">
+                        u
+                      </span>
+                      <!-- k en dégradé jaune doré -->
+                      <span style="background: linear-gradient(135deg, #FFD100 0%, #ffb700 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; padding: 0 2px;">
+                        k
+                      </span>
+                      <!-- a en dégradé rouge -->
+                      <span style="background: linear-gradient(135deg, #CE1126 0%, #ff1a40 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; padding: 0 2px;">
+                        a
+                      </span>
+                    </h1>
                   </div>
-                  <span class="px-2.5 py-0.5 text-xs font-semibold tracking-wide rounded-full border border-cyan-200 dark:border-cyan-500/40 bg-cyan-50 dark:bg-cyan-900/20 text-cyan-700 dark:text-cyan-300">
-                    {{ userRole === 'admin' ? '⬡ Administrateur' : '⬡ Utilisateur' }}
+                </NuxtLink>
+                <p class="text-gray-600 dark:text-gray-400 mt-1">
+                  Connecté en tant que <span class="font-semibold text-cyan-600 dark:text-cyan-400">{{ displayName }}</span>
+                  <span class="ml-3 px-2 py-1 bg-gradient-to-r from-cyan-600 to-blue-600 dark:from-cyan-500 dark:to-purple-600 text-white text-xs rounded-full shadow-md">
+                    {{ userRole === 'admin' ? 'Administrateur' : 'Utilisateur' }}
                   </span>
-                </div>
+                </p>
               </div>
             </div>
-
           </div>
-
-          <!-- Bouton Actualiser -->
+          
           <button
             @click="refreshStats"
             :disabled="isRefreshing"
-            class="self-start md:self-center px-5 py-2.5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200 dark:border-cyan-500/30 rounded-xl text-gray-600 dark:text-cyan-300 text-sm font-medium transition-all duration-300 hover:border-cyan-400 dark:hover:border-cyan-400 hover:text-cyan-600 hover:shadow-lg flex items-center gap-2 disabled:opacity-40"
+            class="px-5 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200 dark:border-cyan-500/30 rounded-xl text-gray-700 dark:text-cyan-300 text-sm font-medium transition-all duration-300 hover:border-cyan-400 dark:hover:border-cyan-400 hover:shadow-lg flex items-center gap-2 disabled:opacity-50"
           >
-            <svg
-              :class="isRefreshing ? 'animate-spin' : ''"
-              class="w-4 h-4"
-              fill="none" stroke="currentColor" viewBox="0 0 24 24"
-            >
+            <svg v-if="isRefreshing" class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
             Actualiser
@@ -75,7 +69,7 @@
         </div>
       </div>
 
-      <!-- ===== CARTE STATS ===== -->
+      <!-- Carte Documents indexés -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div class="relative group backdrop-blur-xl bg-white/80 dark:bg-gray-800/40 rounded-2xl shadow-xl border border-gray-200/50 dark:border-cyan-500/30 hover:border-cyan-400/50 dark:hover:border-cyan-400/50 transition-all duration-300 hover:shadow-2xl hover:shadow-cyan-500/10 p-6">
           <div class="flex items-center justify-between">
@@ -95,7 +89,7 @@
         </div>
       </div>
 
-      <!-- ===== GRAPHIQUES PROMETHEUS ===== -->
+      <!-- Graphiques de monitoring Prometheus -->
       <div class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
         <MetricChart
           title="Requêtes HTTP (taux/sec)"
@@ -127,11 +121,11 @@
         />
       </div>
 
-      <!-- ===== DASHBOARD 2 COLONNES ===== -->
+      <!-- Dashboard 2 colonnes -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
-
-        <!-- Colonne gauche : services -->
+        <!-- Colonne gauche (services) -->
         <div class="lg:col-span-2 space-y-8">
+          <!-- Services microservices -->
           <div class="backdrop-blur-xl bg-white/80 dark:bg-gray-800/40 rounded-2xl shadow-xl border border-gray-200/50 dark:border-cyan-500/30 overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-200/50 dark:border-white/10 bg-gradient-to-r from-cyan-50/50 to-blue-50/50 dark:from-cyan-900/20 dark:to-blue-900/20">
               <h2 class="text-xl font-bold text-gray-900 dark:text-cyan-300 flex items-center">
@@ -142,8 +136,8 @@
               </h2>
             </div>
             <div class="divide-y divide-gray-200/50 dark:divide-white/10">
-              <div
-                v-for="service in services"
+              <div 
+                v-for="service in services" 
                 :key="service.name"
                 class="p-6 hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors duration-200"
               >
@@ -152,8 +146,8 @@
                     <div class="relative">
                       <div :class="[
                         'w-12 h-12 rounded-xl flex items-center justify-center',
-                        service.status === 'online'
-                          ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+                        service.status === 'online' 
+                          ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' 
                           : service.status === 'warning'
                           ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400'
                           : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
@@ -173,8 +167,8 @@
                         <h3 class="font-semibold text-gray-900 dark:text-white">{{ service.label || service.name }}</h3>
                         <span :class="[
                           'px-2 py-0.5 text-xs font-medium rounded-full',
-                          service.status === 'online'
-                            ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
+                          service.status === 'online' 
+                            ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' 
                             : service.status === 'warning'
                             ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'
                             : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
@@ -200,7 +194,7 @@
                     </div>
                   </div>
                   <div class="flex items-center gap-3">
-                    <button
+                    <button 
                       @click="restartService(service)"
                       :disabled="service.status === 'offline'"
                       class="px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 dark:from-cyan-500 dark:to-purple-600 hover:from-cyan-700 hover:to-blue-700 dark:hover:from-cyan-600 dark:hover:to-purple-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 flex items-center gap-1 shadow-md"
@@ -210,7 +204,7 @@
                       </svg>
                       Redémarrer
                     </button>
-                    <button
+                    <button 
                       @click="viewServiceLogs(service)"
                       class="px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition-colors"
                     >
@@ -223,7 +217,7 @@
           </div>
         </div>
 
-        <!-- Colonne droite : utilisateurs récents -->
+        <!-- Colonne droite (utilisateurs récents) -->
         <div class="lg:col-span-1 space-y-8">
           <div class="backdrop-blur-xl bg-white/80 dark:bg-gray-800/40 rounded-2xl shadow-xl border border-gray-200/50 dark:border-blue-500/30 p-6">
             <h3 class="text-lg font-bold text-gray-900 dark:text-blue-300 mb-4 flex items-center">
@@ -233,7 +227,7 @@
               Utilisateurs récents
             </h3>
             <div class="space-y-4">
-              <div
+              <div 
                 v-for="user in recentUsers"
                 :key="user.id"
                 class="flex items-center justify-between p-3 bg-gray-50/50 dark:bg-gray-700/30 rounded-lg hover:bg-gray-100/50 dark:hover:bg-gray-600/30 transition-colors"
@@ -250,7 +244,7 @@
                 <div class="flex items-center gap-2">
                   <span :class="[
                     'px-2 py-0.5 text-xs rounded-full',
-                    user.role === 'admin'
+                    user.role === 'admin' 
                       ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300'
                       : 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
                   ]">
@@ -260,7 +254,7 @@
                 </div>
               </div>
             </div>
-            <button
+            <button 
               @click="viewAllUsers"
               class="w-full mt-4 px-4 py-2 text-sm text-cyan-600 dark:text-cyan-400 hover:text-cyan-800 dark:hover:text-cyan-300 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 rounded-lg transition-colors"
             >
@@ -268,11 +262,10 @@
             </button>
           </div>
         </div>
-
       </div>
     </div>
 
-    <!-- ===== MODAL LOGS ===== -->
+    <!-- Modal Logs -->
     <Teleport to="body">
       <div v-if="showLogsModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
         <div class="bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl rounded-2xl p-6 w-full max-w-4xl max-h-[80vh] overflow-auto border border-cyan-500/30 shadow-2xl">
@@ -298,6 +291,10 @@
 </template>
 
 <script setup lang="ts">
+// ========== AJOUT IMPORTANT ==========
+// Désactive le layout par défaut pour cette page d'administration
+definePageMeta({ layout: false })
+
 import { ref, onMounted, computed } from 'vue'
 import { useThemeStore } from '../../../stores/theme.store'
 import { useAuthStore } from '../../../stores/auth.store'
