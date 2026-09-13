@@ -1,0 +1,149 @@
+# docker-compose.yml nettoyé pour le service "crawler"
+# Ce fichier ne contient **pas** l'infra (zookeeper/kafka/redis).
+# Il suppose qu'une stack infra tourne déjà sur le réseau externe "shared_clean_scrapy_net".
+
+services:
+  scheduler:
+    build:
+      context: .
+      dockerfile: docker/scheduler/Dockerfile.py3
+    image: custom-scrapy-cluster-scheduler:latest
+    volumes:
+      - ./cluster_config:/opt/scrapy-cluster/cluster_config:ro
+      - ./utils/wait-for-it.sh:/usr/local/bin/wait-for-it.sh:ro
+    environment:
+      WAIT_FOR_IT_TIMEOUT: 120
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "scheduler.py"]
+      interval: 10s
+      retries: 5
+    restart: always
+    entrypoint: >-
+      bash -c "
+        /usr/local/bin/wait-for-it.sh zookeeper:2181 --timeout=$${WAIT_FOR_IT_TIMEOUT} &&
+        /usr/local/bin/wait-for-it.sh kafka:9092    --timeout=$${WAIT_FOR_IT_TIMEOUT} &&
+        /usr/local/bin/wait-for-it.sh redis:6379    --timeout=$${WAIT_FOR_IT_TIMEOUT} &&
+        exec python scheduler.py -c /opt/scrapy-cluster/cluster_config/scheduler_config.json
+      "
+    networks:
+      - scnetwork
+      - shared_net
+
+  crawler:
+    build:
+      context: .
+      dockerfile: docker/crawler/Dockerfile.py3
+    volumes:
+      - ./crawler:/usr/src/app
+      - ./scrapy.cfg:/usr/src/app/scrapy.cfg:ro
+      - ./settings.py:/usr/src/app/settings.py:ro
+      - ./utils/wait-for-it.sh:/usr/local/bin/wait-for-it.sh:ro
+      - ./docker/crawler/start.sh:/usr/local/bin/start.sh:ro
+    environment:
+      SPIDER: infoscraper
+      WAIT_FOR_IT_TIMEOUT: "120"
+      # Connexions aux services (sur le réseau partagé infra)
+      REDIS_URL: "redis://redis:6379"
+      ZOOKEEPER_HOSTS: "zookeeper:2181"
+      KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+      CLUSTER_NAME: "demo"
+      CRAWL_TOPIC: "sc.crawl.request"
+      STATUS_TOPIC: "sc.crawl.crawled"
+      ERROR_TOPIC: "sc.crawl.error"
+      PUBLIC_IP: "127.0.0.1"
+    restart: always
+    entrypoint: ["/usr/local/bin/start.sh"]
+    networks:
+      - scnetwork
+      - shared_net
+
+  rest:
+    build:
+      context: .
+      dockerfile: docker/rest/Dockerfile.py3
+    environment:
+      REST_PORT: 5343
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+      KAFKA_HOSTS: kafka:9092
+      KAFKA_TOPIC: item
+      FLASK_DEBUG: false
+    ports:
+      - "5343:5343"
+    restart: always
+    networks:
+      - scnetwork
+      - shared_net
+
+  redis_monitor:
+    build:
+      context: .
+      dockerfile: docker/redis-monitor/Dockerfile.py3
+    environment:
+      KAFKA_HOSTS: kafka:9092
+      KAFKA_TOPIC: redis_monitor
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    restart: always
+    networks:
+      - scnetwork
+      - shared_net
+
+  kafka_monitor:
+    build:
+      context: .
+      dockerfile: docker/kafka-monitor/Dockerfile.py3
+    restart: always
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_HOSTS: "kafka:9092"
+      KAFKA_TOPICS: item,stats,redis_monitor
+      KMON_SAMPLING_INTERVAL: 60
+      METRICS_TOPIC: kafka_monitor_metrics
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    networks:
+      - scnetwork
+      - shared_net
+
+  stats_collector:
+    build:
+      context: .
+      dockerfile: docker/stats-collector/Dockerfile.py3
+    environment:
+      KAFKA_HOSTS: kafka:9092
+      KAFKA_TOPIC: stats
+      KAFKA_GROUP_ID: stats_collector
+      STATS_EMIT_INTERVAL: 60
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      ZOOKEEPER_HOST: zookeeper
+      ZOOKEEPER_PORT: 2181
+      KAFKA_PORT: 9092
+    restart: "no"
+    command: ["python", "stats_collector.py", "-c", "redis-monitor.cfg"]
+    networks:
+      - scnetwork
+      - shared_net
+
+  seeder:
+    build:
+      context: .
+      dockerfile: docker/seeder/Dockerfile.py3
+    environment:
+      KAFKA_BROKER: "kafka:9092"
+      SEED_TOPIC: "sc.seed.crawl"
+    restart: "no"
+    networks:
+      - scnetwork
+      - shared_net
+
+
+networks:
+  scnetwork:
+    driver: bridge
+  shared_net:
+    external: true
+    name: shared_clean_scrapy_net

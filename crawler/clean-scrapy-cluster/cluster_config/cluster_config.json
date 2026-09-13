@@ -1,0 +1,47 @@
+{
+  "kafka": {
+    "bootstrap_servers": "kafka:9092",
+    "topic_prefix": "sc",
+    "consumer_group": "scheduler-group",
+    "monitoring_enabled": true,
+    "topics": {
+      "seed": "sc.seed.crawl",
+      "task": "sc.crawl.request",
+      "crawl": "sc.crawl.crawled",
+      "error": "sc.crawl.error"
+    }
+  },
+  "redis": {
+    "host": "redis",
+    "port": 6379,
+    "monitoring_enabled": true
+  },
+  "spider": {
+    "max_requests_per_domain": 10,
+    "max_requests": 100,
+    "request_timeout": 10,
+    "depth_limit": 2,
+    "allowed_domains": [
+      "developpez.com",
+      "linuxfr.org",
+      "journaldugeek.com",
+      "korben.info"
+    ]
+  },
+  "monitoring": {
+    "stats_interval": 10,
+    "log_level": "INFO"
+  },
+
+  "zookeeper": {
+    "hosts": "zookeeper:2181",
+    "monitoring_enabled": true,
+    "kafka_bootstrap": ["kafka:9092"],
+    "interval": 5,
+    "spider": {
+     "max_requests_per_domain": 10
+    }
+  }
+}
+
+

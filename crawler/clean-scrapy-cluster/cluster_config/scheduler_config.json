@@ -1,0 +1,50 @@
+{
+  "scheduler": {
+    "LOG_LEVEL": "DEBUG",
+    "REDIS_URL": "redis://redis:6379/0",
+    "REDIS_HOST": "redis",
+    "REDIS_PORT": 6379,
+    "REDIS_DB": 0,
+    "ZOOKEEPER_HOSTS": "zookeeper:2181",
+    "KAFKA_BROKER": "kafka:9092",
+    "KAFKA_BOOTSTRAP_SERVERS": "kafka:9092",
+    "KAFKA_ENABLED": true,
+    "INTERVAL": 10,
+    "SEED_TOPIC": "sc.seed.crawl",
+    "CRAWL_TOPIC": "sc.crawl.request",
+    "STATUS_TOPIC": "crawled_documents",
+    "ERROR_TOPIC": "sc.crawl.error",
+    "SPIDER_STARTREDIS_KEY": "sc:start_urls",
+    "PUBLIC_IP": "127.0.0.1",
+    "SCHEDULER_IP_ENABLED": false,
+    "SCHEDULER_IP_REFRESH": 300,
+    "AUTO_OFFSET_RESET": "earliest",
+    "GROUP_ID": "scheduler-group",
+    "SPIDER_ID": "infoscraper",
+    "APP_ID": "moteur-recherche",
+    "CRAWL_ID": "moteur-recherche-init",
+    "MAX_DOMAIN_REQUESTS": 100,
+    "MAX_PAGES_PER_DOMAIN": 50,
+    "MIN_WAIT_TIME": 2,
+    "MAX_WAIT_TIME": 5,
+    "RETRY_TIMES": 2,
+    "RETRY_HTTP_CODES": [500, 502, 503, 504, 408, 429]
+  },
+  "kafka": {
+    "topic_prefix": "sc",
+    "consumer_timeout_ms": 10000,
+    "producer_batch_size": 16384,
+    "producer_buffer_memory": 33554432
+  },
+  "redis": {
+    "queue_key": "sc:queue",
+    "stats_key": "scheduler:stats",
+    "dupefilter_key": "sc:dupefilter"
+  },
+  "zookeeper": {
+    "path": "/scrapy-cluster/scheduler",
+    "timeout": 10,
+    "retry_max_delay": 60
+  },
+  "ITEM_PIPELINES": {}
+}

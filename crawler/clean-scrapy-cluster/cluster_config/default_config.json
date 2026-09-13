@@ -1,0 +1,22 @@
+{
+  "scheduler": {
+    "LOG_LEVEL": "INFO",
+    "REDIS_URL": "redis://redis:6379",
+    "zookeeper_hosts": "zookeeper:2181",
+    "KAFKA_BROKER": "kafka:9092",
+    "INTERVAL": 10,
+    "SEED_TOPIC": "sc.seed.crawl",
+    "CRAWL_TOPIC": "sc.crawl.request",
+    "STATUS_TOPIC": "sc.crawl.crawled",
+    "ERROR_TOPIC": "sc.crawl.error",
+    "SPIDER_STARTREDIS_KEY": "sc:start_urls",
+    "PUBLIC_IP": "127.0.0.1",
+    "SCHEDULER_IP_ENABLED": false,
+    "AUTO_OFFSET_RESET": "earliest",
+    "GROUP_ID": "scheduler-group"
+  },
+  "kafka": {
+    "topic_prefix": "sc"
+  },
+  "ITEM_PIPELINES": {}
+}

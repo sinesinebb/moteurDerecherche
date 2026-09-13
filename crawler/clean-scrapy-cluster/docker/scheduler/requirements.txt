@@ -1,0 +1,6 @@
+kafka-python>=1.4.3
+kazoo
+future
+six
+Scrapy>=1.8
+redis>=4.0.0

@@ -1,0 +1,46 @@
+# -*- coding: utf-8 -*-
+import scrapy
+
+class RawResponseItem(scrapy.Item):
+    appid            = scrapy.Field()
+    crawlid          = scrapy.Field()
+    url              = scrapy.Field()
+    response_url     = scrapy.Field()
+    status_code      = scrapy.Field()
+    response_headers = scrapy.Field()
+    request_headers  = scrapy.Field()
+    body             = scrapy.Field()
+    links            = scrapy.Field()
+    attrs            = scrapy.Field()
+    success          = scrapy.Field()
+    exception        = scrapy.Field()
+    encoding         = scrapy.Field()
+    thematic_score   = scrapy.Field()
+    is_thematic      = scrapy.Field()
+    technical_metadata = scrapy.Field()
+    # Les champs métier
+    title            = scrapy.Field()
+    description      = scrapy.Field()
+    keywords_found   = scrapy.Field()
+    # Médias / métadata
+    image_urls       = scrapy.Field()
+    video_urls       = scrapy.Field()
+    media_count      = scrapy.Field()
+    content_type     = scrapy.Field()
+    extracted_content = scrapy.Field()
+    crawled_at       = scrapy.Field()
+    images_count     = scrapy.Field()
+    videos_count     = scrapy.Field()
+    youtube_videos_count = scrapy.Field()
+    domain           = scrapy.Field()
+    path             = scrapy.Field()
+    content          = scrapy.Field()
+    metadata         = scrapy.Field()
+    file_type        = scrapy.Field()
+    file_size        = scrapy.Field()
+    pages            = scrapy.Field()    
+    word_count       = scrapy.Field()
+    minio_url        = scrapy.Field()
+    youtube_video_ids = scrapy.Field()
+
+

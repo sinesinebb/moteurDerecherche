@@ -1,0 +1,65 @@
+# ./crawler/clean-scrapy-cluster/docker/crawler/entrypoint.sh
+#!/bin/bash
+set -e
+
+echo "Starting Scrapy Crawler with configuration: $1"
+
+# Wait for dependencies if specified
+if [ -n "$ZOOKEEPER_HOSTS" ]; then
+    IFS=',' read -ra ZK_HOSTS <<< "$ZOOKEEPER_HOSTS"
+    for host_port in "${ZK_HOSTS[@]}"; do
+        host=$(echo $host_port | cut -d: -f1)
+        port=$(echo $host_port | cut -d: -f2)
+        echo "Waiting for Zookeeper at $host:$port..."
+        while ! nc -z $host $port; do
+            sleep 1
+        done
+        echo "Zookeeper at $host:$port is ready!"
+    done
+fi
+
+if [ -n "$REDIS_HOST" ] && [ -n "$REDIS_PORT" ]; then
+    echo "Waiting for Redis at $REDIS_HOST:$REDIS_PORT..."
+    while ! nc -z $REDIS_HOST $REDIS_PORT; do
+        sleep 1
+    done
+    echo "Redis at $REDIS_HOST:$REDIS_PORT is ready!"
+fi
+
+if [ -n "$KAFKA_BOOTSTRAP_SERVERS" ]; then
+    IFS=',' read -ra KAFKA_HOSTS <<< "$KAFKA_BOOTSTRAP_SERVERS"
+    for host_port in "${KAFKA_HOSTS[@]}"; do
+        host=$(echo $host_port | cut -d: -f1)
+        port=$(echo $host_port | cut -d: -f2)
+        echo "Waiting for Kafka at $host:$port..."
+        while ! nc -z $host $port; do
+            sleep 1
+        done
+        echo "Kafka at $host:$port is ready!"
+    done
+fi
+
+echo "All dependencies are ready!"
+
+# Set PYTHONPATH
+export PYTHONPATH=/usr/src/app:$PYTHONPATH
+
+# Change to crawler directory
+cd /usr/src/app/crawler
+
+# Run the crawler
+echo "Starting crawler with spider: $SPIDER"
+if [ "$SPIDER" = "infoscraper" ]; then
+    echo "Running infoscraper spider..."
+    # Check if run.py exists
+    if [ -f "run.py" ]; then
+        python run.py
+    else
+        echo "ERROR: run.py not found!"
+        ls -la /usr/src/app/crawler/
+        exit 1
+    fi
+else
+    echo "Running scrapy crawl $SPIDER..."
+    scrapy crawl $SPIDER
+fi
